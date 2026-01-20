@@ -15,13 +15,9 @@ SUPPORTED_APPS = {
     },
     "vscodium": {
         "name": "VSCodium",
-        "url": "https://github.com/VSCodium/vscodium/releases/latest/download/VSCodium-linux-x64-1.85.1.24003.tar.gz", # Approx latest, usually they have a 'latest' endpoint? Not easily for tar. Using a recent version or need logic? 
-        # Actually github releases usually need specific version or API lookup. 
-        # For simplicity in this static file, I'll use a specific recent version or an AppImage which is easier to link 'latest' often?
-        # Let's use AppImage for Codium as it is cleaner.
-        "url": "https://github.com/VSCodium/vscodium/releases/download/1.85.2.24019/VSCodium-1.85.2.24019-x86_64.AppImage",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.108.10359/VSCodium-1.108.10359.glibc2.30-x86_64.AppImage",
         "type": "appimage",
-        "bin_path": "VSCodium-1.85.2.24019-x86_64.AppImage",
+        "bin_path": "VSCodium-1.108.10359.glibc2.30-x86_64.AppImage",
         "link_name": "codium"
     },
     "sublime": {
@@ -33,9 +29,9 @@ SUPPORTED_APPS = {
     },
     "neovim": {
         "name": "Neovim",
-        "url": "https://github.com/neovim/neovim/releases/latest/download/nvim.appimage",
+        "url": "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage",
         "type": "appimage",
-        "bin_path": "nvim.appimage",
+        "bin_path": "nvim-linux-x86_64.appimage",
         "link_name": "nvim"
     },
     "zed": {
@@ -123,29 +119,20 @@ SUPPORTED_APPS = {
         "link_name": "telegram"
     },
     "slack": {
-        "name": "Beal (Slack Client)", # Unofficial or web? Slack official is tough.
-        # Adding Zoom
-        "name": "Zoom",
-        "url": "https://zoom.us/client/latest/zoom_x86_64.tar.xz",
-        "type": "tar.xz",
-        "bin_path": "zoom/zoom",
-        "link_name": "zoom"
+         "name": "Zoom",
+         "url": "https://zoom.us/client/latest/zoom_x86_64.tar.xz",
+         "type": "tar.xz",
+         "bin_path": "zoom/zoom",
+         "link_name": "zoom"
     },
     "teams": {
         "name": "Teams for Linux",
-        "url": "https://github.com/IsmaelMartinez/teams-for-linux/releases/latest/download/teams-for-linux.AppImage",
+        "url": "https://github.com/IsmaelMartinez/teams-for-linux/releases/download/v2.6.18/teams-for-linux-2.6.18.AppImage",
         "type": "appimage",
-        "bin_path": "teams-for-linux.AppImage",
+        "bin_path": "teams-for-linux-2.6.18.AppImage",
         "link_name": "teams"
     },
     "signal": {
-        "name": "Signal",
-        # Signal desktop official is apt-only.
-        # Using unofficial Axolotl or similar? No.
-        # Skip to avoid issues.
-        "name": "Element",
-        "url": "https://packages.element.io/desktop/install/linux/Element.AppImage", # Hypothetical or finding real one difficult?
-        # Let's use widely appimages.
         "name": "Beeper",
         "url": "https://download.beeper.com/linux/appImage/x64",
         "type": "appimage",
@@ -175,13 +162,13 @@ SUPPORTED_APPS = {
         "bin_path": "dbeaver/dbeaver",
         "link_name": "dbeaver"
     },
-    "beekeeper": {
-        "name": "Beekeeper Studio",
-        "url": "https://github.com/beekeeper-studio/beekeeper-studio/releases/latest/download/Beekeeper-Studio.AppImage",
-        "type": "appimage",
-        "bin_path": "Beekeeper-Studio.AppImage",
-        "link_name": "beekeeper"
-    },
+    # "beekeeper": {
+    #     "name": "Beekeeper Studio",
+    #     "url": "https://github.com/beekeeper-studio/beekeeper-studio/releases/download/v5.5.4/Beekeeper-Studio-5.5.4-x86_64.AppImage",
+    #     "type": "appimage",
+    #     "bin_path": "Beekeeper-Studio-5.5.4-x86_64.AppImage",
+    #     "link_name": "beekeeper"
+    # },
     "mongodb-compass": {
         "name": "MongoDB Compass",
         # URL often specific version.
@@ -192,16 +179,16 @@ SUPPORTED_APPS = {
     },
     "redisinsight": {
         "name": "RedisInsight",
-        "url": "https://download.redisinsight.redis.com/latest/RedisInsight-v2-linux-x86_64.AppImage",
+        "url": "https://download.redisinsight.redis.com/latest/Redis-Insight-linux-x86_64.AppImage",
         "type": "appimage",
-        "bin_path": "RedisInsight-v2-linux-x86_64.AppImage",
+        "bin_path": "Redis-Insight-linux-x86_64.AppImage",
         "link_name": "redisinsight"
     },
     "bruno": {
         "name": "Bruno",
-        "url": "https://github.com/usebruno/bruno/releases/latest/download/bruno_200.0.0_x86_64_linux.AppImage", # Fake version, usually need dynamic.
+        "url": "https://github.com/usebruno/bruno/releases/download/v3.0.2/bruno_3.0.2_x86_64_linux.AppImage",
         "type": "appimage",
-        "bin_path": "bruno.AppImage",
+        "bin_path": "bruno_3.0.2_x86_64_linux.AppImage",
         "link_name": "bruno"
     },
 
@@ -213,32 +200,34 @@ SUPPORTED_APPS = {
         "bin_path": "blender-4.0.2-linux-x64/blender",
         "link_name": "blender"
     },
-    "gimp": {
-        "name": "GIMP",
-        "url": "https://download.gimp.org/gimp/v2.10/linux/gimp-2.10.36-setup.AppImage", # Check actual link
-        "type": "appimage",
-        "bin_path": "gimp.AppImage",
-        "link_name": "gimp"
-    },
+    # "gimp": {
+    #     "name": "GIMP",
+    #     # "url": "https://download.gimp.org/gimp/v3.0/linux/gimp-3.0.6-x86_64.AppImage", # Official 404
+    #     # Using alternate build or disable. 
+    #     "url": "https://github.com/TasMania17/Gimp-Appimages/releases/download/v2.10.36/GIMP_2.10.36-x86_64.AppImage", # Guessing
+    #     "type": "appimage",
+    #     "bin_path": "GIMP_2.10.36-x86_64.AppImage",
+    #     "link_name": "gimp"
+    # },
     "krita": {
         "name": "Krita",
         "url": "https://download.kde.org/stable/krita/5.2.2/krita-5.2.2-x86_64.appimage",
         "type": "appimage",
-        "bin_path": "krita.AppImage",
+        "bin_path": "krita-5.2.2-x86_64.appimage",
         "link_name": "krita"
     },
     "inkscape": {
         "name": "Inkscape",
         "url": "https://inkscape.org/gallery/item/44616/Inkscape-e7c3feb-x86_64.AppImage",
         "type": "appimage",
-        "bin_path": "inkscape.AppImage",
+        "bin_path": "Inkscape-e7c3feb-x86_64.AppImage",
         "link_name": "inkscape"
     },
     "audacity": {
         "name": "Audacity",
         "url": "https://github.com/audacity/audacity/releases/download/Audacity-3.4.2/audacity-linux-3.4.2-x64.AppImage",
         "type": "appimage",
-        "bin_path": "audacity.AppImage",
+        "bin_path": "audacity-linux-3.4.2-x64.AppImage",
         "link_name": "audacity"
     },
     
@@ -252,28 +241,20 @@ SUPPORTED_APPS = {
     },
     "notion-enhanced": {
         "name": "Notion Enhanced",
-        "url": "https://github.com/notion-enhancer/notion-repackaged/releases/latest/download/Notion-Enhanced-linux-x64.AppImage",
+        "url": "https://github.com/notion-enhancer/notion-repackaged/releases/download/v2.0.18-1/Notion-2.0.18-1.AppImage",
         "type": "appimage",
-        "bin_path": "notion.AppImage",
+        "bin_path": "Notion-2.0.18-1.AppImage",
         "link_name": "notion"
     },
     "joplin": {
         "name": "Joplin",
         "url": "https://github.com/laurent22/joplin/releases/download/v2.13.15/Joplin-2.13.15.AppImage",
         "type": "appimage",
-        "bin_path": "joplin.AppImage",
+        "bin_path": "Joplin-2.13.15.AppImage",
         "link_name": "joplin"
     },
     "bitwarden": {
         "name": "Bitwarden",
-        "url": "https://vault.bitwarden.com/download/?app=desktop&platform=linux&variant=appimage", # Dynamic link often works?
-        # Actually this downloads a file named 'Bitwarden...AppImage'.
-        "type": "appimage",
-        "bin_path": "Bitwarden*AppImage", # Wildcard support needed? No, installer uses filename logic for now.
-        # We need to refine installer to handle 'content-disposition' name or just save as fixed name.
-        # Current installer uses url split. 
-        # URL has query params... we implemented "temp_download.archive" logic but it might fail extension check.
-        # Let's use fixed github release for reliability.
         "url": "https://github.com/bitwarden/clients/releases/download/desktop-v2024.1.0/Bitwarden-2024.1.0-x86_64.AppImage",
         "type": "appimage",
         "bin_path": "Bitwarden-2024.1.0-x86_64.AppImage",
@@ -283,21 +264,28 @@ SUPPORTED_APPS = {
         "name": "KeePassXC",
         "url": "https://github.com/keepassxreboot/keepassxc/releases/download/2.7.6/KeePassXC-2.7.6-x86_64.AppImage",
         "type": "appimage",
-        "bin_path": "KeePassXC.AppImage",
+        "bin_path": "KeePassXC-2.7.6-x86_64.AppImage",
         "link_name": "keepassxc"
+    },
+    "librewolf": {
+        "name": "LibreWolf",
+        "url": "https://gitlab.com/api/v4/projects/24386000/packages/generic/librewolf/latest/LibreWolf.x86_64.AppImage",
+        "type": "appimage",
+        "bin_path": "LibreWolf.x86_64.AppImage",
+        "link_name": "librewolf"
     },
     "cpu-x": {
         "name": "CPU-X",
-        "url": "https://github.com/X0rg/CPU-X/releases/download/v5.0.3/CPU-X-v5.0.3-x86_64.AppImage",
+        "url": "https://github.com/X0rg/CPU-X/releases/download/v5.4.0/CPU-X-5.4.0-x86_64.AppImage",
         "type": "appimage",
-        "bin_path": "CPU-X.AppImage",
+        "bin_path": "CPU-X-5.4.0-x86_64.AppImage",
         "link_name": "cpu-x"
     },
     "etcher": {
         "name": "Balena Etcher",
         "url": "https://github.com/balena-io/etcher/releases/download/v1.18.11/balenaEtcher-1.18.11-x64.AppImage",
         "type": "appimage",
-        "bin_path": "etcher.AppImage",
+        "bin_path": "balenaEtcher-1.18.11-x64.AppImage",
         "link_name": "etcher"
     },
 
@@ -458,18 +446,18 @@ SUPPORTED_APPS = {
         "bin_path": "firefox/firefox",
         "link_name": "firefox-dev"
     },
+    # "brave": {
+    #     "name": "Brave Browser",
+    #     "url": "https://github.com/ivan-hc/Brave-appimage/releases/download/continuous/Brave-x86_64.AppImage",
+    #     "type": "appimage",
+    #     "bin_path": "Brave-x86_64.AppImage",
+    #     "link_name": "brave"
+    # },
     "librewolf": {
         "name": "LibreWolf",
-        "url": "https://gitlab.com/librewolf-community/browser/appimage/-/jobs/artifacts/master/raw/LibreWolf-x86_64.AppImage?job=build",
+        "url": "https://gitlab.com/api/v4/projects/24386000/packages/generic/librewolf/latest/LibreWolf.x86_64.AppImage",
         "type": "appimage",
-        "bin_path": "LibreWolf-x86_64.AppImage",
+        "bin_path": "LibreWolf.x86_64.AppImage",
         "link_name": "librewolf"
     },
-    "brave": {
-        "name": "Brave Browser",
-        "url": "https://github.com/brave/brave-browser/releases/download/v1.62.153/Brave-Browser-x86_64.AppImage", # Example version
-        "type": "appimage",
-        "bin_path": "Brave-Browser-x86_64.AppImage",
-        "link_name": "brave"
-    }
 }
