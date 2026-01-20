@@ -39,22 +39,11 @@ SUPPORTED_APPS = {
         "link_name": "nvim"
     },
     "zed": {
-        "name": "Zed Editor",
-        # Zed linux support is preview/building. Official builds might vary. 
-        # Skipping Zed for now to avoid broken links. 
-        # Replaced with standard editors.
-        "name": "Cursor", # AI Editor
-        "url": "https://downloader.cursor.sh/linux/appImage/x64",
-        "type": "appimage",
-        "bin_path": "cursor.AppImage", # We renamed it on install? No, logic uses original filename unless we rename. 
-        # Installer extracts filename from URL. "x64" is bad filename.
-        # User requested fix: We need to handle this.
-        # But for now let's stick to safe filenames or easy ones.
-        # Let's create a wrapper that handles bad filenames in future.
-        # Removing Cursor for now to be safe.
-        "name": "Geany",
-        "url": "https://download.geany.org/geany-2.0_linux-x64.tar.gz", # Fake link example? Geany usually via repo.
-        # Let's stick to JetBrains.
+         "name": "Zed Editor (Preview)",
+         "url": "https://zed.dev/api/releases/stable/latest/zed-linux-x86_64.tar.gz",
+         "type": "tar.gz",
+         "bin_path": "zed.app/bin/zed",
+         "link_name": "zed"
     },
 
     # --- JetBrains ---

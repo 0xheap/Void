@@ -81,7 +81,7 @@ def download_file(url, target_path):
         print("Download complete.")
     except Exception as e:
         print(f"Error downloading {url}: {e}")
-        sys.exit(1)
+        raise e
 
 def extract_tar(archive_path, extract_to):
     print(f"Extracting {archive_path}...")
@@ -98,7 +98,7 @@ def extract_tar(archive_path, extract_to):
         print("Extraction complete.")
     except Exception as e:
         print(f"Error extracting {archive_path}: {e}")
-        sys.exit(1)
+        raise e
 
 def create_symlink(target, link_name):
     # Ensure bin dir exists
@@ -161,27 +161,30 @@ def install_app(app_name):
     download_file(app_info["url"], temp_download_path)
     
     # 3. Extract or Move
-    if app_info["type"] == "appimage":
-        # AppImage logic
-        # For AppImage, bin_path IS the file itself relative to app_install_dir
-        final_binary_path = app_install_dir / app_info["bin_path"]
-        install_appimage(app_name, temp_download_path, final_binary_path)
-    else:
-        # Tarball logic
-        app_install_dir.mkdir(parents=True, exist_ok=True)
-        extract_tar(temp_download_path, app_install_dir)
-        temp_download_path.unlink()
+    try:
+        if app_info["type"] == "appimage":
+            # AppImage logic
+            # For AppImage, bin_path IS the file itself relative to app_install_dir
+            final_binary_path = app_install_dir / app_info["bin_path"]
+            install_appimage(app_name, temp_download_path, final_binary_path)
+        else:
+            # Tarball logic
+            app_install_dir.mkdir(parents=True, exist_ok=True)
+            extract_tar(temp_download_path, app_install_dir)
+            temp_download_path.unlink()
+    except Exception as e:
+        raise Exception(f"Installation failed during extraction: {e}")
     
     # 4. Link
     binary_path = app_install_dir / app_info["bin_path"]
     
     if not binary_path.exists():
-        print(f"Error: Expected binary not found at {binary_path}")
         # Debug list
+        files_found = []
         for root, dirs, files in os.walk(app_install_dir):
             for name in files:
-                print(os.path.join(root, name))
-        sys.exit(1)
+                files_found.append(os.path.join(root, name))
+        raise Exception(f"Expected binary not found at {binary_path}. Found files: {files_found[:5]}...")
         
     create_symlink(binary_path, app_info["link_name"])
     

@@ -8,11 +8,26 @@ from pathlib import Path
 # Add current directory to path so we can import modules
 sys.path.append(str(Path(__file__).parent))
 
-from modules import installer, apps
+from modules import installer, apps, tui
 
 CONFIG_DIR = Path.home() / ".config" / "void"
 CONFIG_FILE = CONFIG_DIR / "apps.json"
 BIN_DIR = Path.home() / "bin"
+
+def check_path_warning():
+    """Check if ~/bin is in PATH and warn if not."""
+    path_env = os.environ.get("PATH", "")
+    bin_str = str(BIN_DIR)
+    if bin_str not in path_env:
+        print("\n" + "="*60)
+        print(" WARNING: ~/bin IS NOT IN YOUR PATH")
+        print(" Apps installed by Void will not be found by your shell.")
+        print(" Run this command to fix it:")
+        print(f"    echo 'export PATH=\"$HOME/bin:$PATH\"' >> ~/.zshrc")
+        print("    source ~/.zshrc")
+        print("="*60 + "\n")
+        return False
+    return True
 
 def load_config():
     if not CONFIG_FILE.exists():
@@ -100,6 +115,9 @@ def main():
     # Install All
     subparsers.add_parser("install-all", help="Install all apps from config")
 
+    # TUI
+    subparsers.add_parser("tui", help="Launch Text User Interface (Default)")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -110,8 +128,19 @@ def main():
         cmd_install(args)
     elif args.command == "install-all":
         cmd_install_all(args)
+    elif args.command == "tui":
+        tui.run()
     else:
-        parser.print_help()
+        # Default to TUI if no args, or help?
+        # User requested tool to be a TUI tool. Defaulting to TUI is nice.
+        # But let's check if sys.stdout is a tty.
+        if sys.stdout.isatty():
+            # Check PATH before launching TUI
+            check_path_warning() # CLI warning (might be overwritten by TUI init)
+            # Pass path status to TUI?
+            tui.run(missing_path=str(BIN_DIR) not in os.environ.get("PATH", ""))
+        else:
+            parser.print_help()
 
 if __name__ == "__main__":
     main()
