@@ -139,23 +139,14 @@ class VoidTUI:
         for i, app_name in enumerate(self.selected_indices):
             win.clear()
             win.box()
-            win.addstr(2, 2, f"Installing {i+1}/{total}: {apps.SUPPORTED_APPS[app_name]['name']}")
+            
+            # Determine action
+            installed = self.is_installed(app_name)
+            action = "Uninstalling" if installed else "Installing"
+            
+            win.addstr(2, 2, f"{action} {i+1}/{total}: {apps.SUPPORTED_APPS[app_name]['name']}")
             win.addstr(4, 2, "Please wait... (Check stdout logs if needed)")
             win.refresh()
-            
-            # Capture stdout/stderr? Or just let it run.
-            # installer.install_app prints to stdout, which messes up curses.
-            # Ideally we redirect stdout to a buffer or log file.
-            
-            # Hack: Temporarily leave curses?
-            # Or silence stdout.
-            
-            # Let's redirect stdout/stderr to bitbucket or a log file for now
-            # and just show progress in TUI.
-            
-            # Better: run installer.install_app
-            # We need to suppress its print statements or it will garble the screen.
-            # We can mock print?
             
             try:
                 # Basic suppression
@@ -165,7 +156,10 @@ class VoidTUI:
                     sys.stdout = fnull
                     
                     try:
-                        installer.install_app(app_name)
+                        if installed:
+                            installer.uninstall_app(app_name)
+                        else:
+                            installer.install_app(app_name)
                     finally:
                         sys.stdout = old_stdout
             except Exception as e:

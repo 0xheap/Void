@@ -193,3 +193,34 @@ def install_app(app_name):
         link_data_dirs(app_name, app_info["data_paths"])
         
     print(f"Successfully installed {app_name}!")
+
+def uninstall_app(app_name):
+    print(f"\n--- Uninstalling {app_name} ---")
+    if app_name not in apps.SUPPORTED_APPS:
+        print(f"Unknown app: {app_name}")
+        return
+
+    app_info = apps.SUPPORTED_APPS[app_name]
+    app_install_dir = APPS_DIR / app_name
+    link_path = BIN_DIR / app_info["link_name"]
+
+    # 1. Remove Symlink
+    if link_path.exists() or link_path.is_symlink():
+        print(f"Removing symlink: {link_path}")
+        link_path.unlink()
+    else:
+        print(f"Symlink not found at {link_path}")
+
+    # 2. Remove App Directory
+    if app_install_dir.exists():
+        print(f"Removing app directory: {app_install_dir}")
+        shutil.rmtree(app_install_dir)
+    else:
+        print(f"App directory not found at {app_install_dir}")
+
+    # 3. Data Directory (Optional - currently kept for safety)
+    # data_path = DATA_DIR / app_name
+    # if data_path.exists():
+    #     print(f"Note: Data directory preserved at {data_path}")
+    
+    print(f"Successfully uninstalled {app_name}")

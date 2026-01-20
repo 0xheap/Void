@@ -82,6 +82,15 @@ def cmd_install(args):
     
     installer.install_app(app_name)
 
+def cmd_uninstall(args):
+    """Uninstall a specific application."""
+    app_name = args.app_name
+    if app_name not in apps.SUPPORTED_APPS:
+        print(f"Error: Application '{app_name}' is not supported.")
+        return
+
+    installer.uninstall_app(app_name)
+
 def cmd_install_all(args):
     """Install all applications listed in config."""
     config = load_config()
@@ -112,6 +121,10 @@ def main():
     parser_install = subparsers.add_parser("install", help="Install a specific application")
     parser_install.add_argument("app_name", help="Name of the application to install")
 
+    # Uninstall
+    parser_uninstall = subparsers.add_parser("uninstall", help="Uninstall a specific application")
+    parser_uninstall.add_argument("app_name", help="Name of the application to uninstall")
+
     # Install All
     subparsers.add_parser("install-all", help="Install all apps from config")
 
@@ -126,6 +139,8 @@ def main():
         cmd_list(args)
     elif args.command == "install":
         cmd_install(args)
+    elif args.command == "uninstall":
+        cmd_uninstall(args)
     elif args.command == "install-all":
         cmd_install_all(args)
     elif args.command == "tui":
