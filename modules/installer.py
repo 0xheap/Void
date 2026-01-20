@@ -100,6 +100,30 @@ def extract_tar(archive_path, extract_to):
         print(f"Error extracting {archive_path}: {e}")
         raise e
 
+def extract_deb(archive_path, extract_to):
+    """
+    Extract .deb package using dpkg -x (does not require root).
+    Extracts to 'extract_to' directory.
+    """
+    print(f"Extracting DEB {archive_path}...")
+    try:
+        # dpkg -x <deb> <dir>
+        # We use subprocess
+        import subprocess
+        
+        # Ensure target dir actually exists
+        Path(extract_to).mkdir(parents=True, exist_ok=True)
+        
+        cmd = ["dpkg", "-x", str(archive_path), str(extract_to)]
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print("Extraction complete.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error extracting deb: {e.stderr}")
+        raise Exception(f"Failed to extract deb: {e.stderr}")
+    except Exception as e:
+        print(f"Error extracting deb: {e}")
+        raise e
+
 def create_symlink(target, link_name):
     # Ensure bin dir exists
     BIN_DIR.mkdir(parents=True, exist_ok=True)
@@ -167,6 +191,13 @@ def install_app(app_name):
             # For AppImage, bin_path IS the file itself relative to app_install_dir
             final_binary_path = app_install_dir / app_info["bin_path"]
             install_appimage(app_name, temp_download_path, final_binary_path)
+            
+        elif app_info["type"] == "deb":
+            # DEB logic
+            app_install_dir.mkdir(parents=True, exist_ok=True)
+            extract_deb(temp_download_path, app_install_dir)
+            temp_download_path.unlink()
+            
         else:
             # Tarball logic
             app_install_dir.mkdir(parents=True, exist_ok=True)

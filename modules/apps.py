@@ -494,6 +494,16 @@ SUPPORTED_APPS = {
         "bin_path": "firefox/firefox",
         "link_name": "firefox-dev"
     },
+    "google-chrome": {
+        "name": "Google Chrome",
+        "url": "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb",
+        "type": "deb",
+        # In deb extraction: /usr/bin/google-chrome-stable -> /opt/google/chrome/google-chrome
+        # dpkg -x extracts to root of extract_to. So structure is:
+        # app_install_dir/opt/google/chrome/google-chrome
+        "bin_path": "opt/google/chrome/google-chrome",
+        "link_name": "google-chrome"
+    },
     # "brave": {
     #     "name": "Brave Browser",
     #     "url": "https://github.com/ivan-hc/Brave-appimage/releases/download/continuous/Brave-x86_64.AppImage",
@@ -509,4 +519,3 @@ SUPPORTED_APPS = {
         "link_name": "librewolf"
     },
 }
-
