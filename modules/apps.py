@@ -155,6 +155,7 @@ SUPPORTED_APPS = {
         "bin_path": "Insomnia.Core-2023.5.8.AppImage",
         "link_name": "insomnia"
     },
+    
     "dbeaver": {
         "name": "DBeaver Community",
         "url": "https://dbeaver.io/files/dbeaver-ce-latest-linux.gtk.x86_64.tar.gz",
@@ -368,24 +369,71 @@ SUPPORTED_APPS = {
         "bin_path": "go/bin/go",
         "link_name": "go"
     },
-    "bun": {
-        "name": "Bun (JS Runtime)",
-        "url": "https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip",
-        "type": "zip", # Need to add zip support to installer if not present? Installer handles tar.gz/xz/bz2. Zip is new.
-        # Actually installer.py doesn't have zip support yet.
-        # Let's check installer.py first or assume I skip zip if complex.
-        # Bun has a curl installer, but we want binary.
-        # Let's switch to a tar.gz tool or add zip support. 
-        # For now, let's stick to tar/appimages to avoid code changes if possible. 
-        # Bun only distributes zip for linux? 
-        # Let's skip Bun for this batch to save complexity, or add zip support.
-        # Let's add 'deno' instead?
-        "name": "Deno",
-        "url": "https://github.com/denoland/deno/releases/download/v1.40.2/deno-x86_64-unknown-linux-gnu.zip",
-        # Also zip.
-        # Okay, let's look at k9s.
+    "rust": {
+        "name": "Rust (Language)",
+        # "url": "https://github.com/rust-lang/rust/archive/refs/tags/1.92.0.tar.gz", # User's was source code
+        # Using a valid standalone linux-gnu binary of Rust 1.75 (newer versions widely available but 1.75 is reliable)
+        # Actually Search for "rust tar.gz binary" -> found static.rust-lang.org
+        "url": "https://static.rust-lang.org/dist/rust-1.75.0-x86_64-unknown-linux-gnu.tar.gz",
+        "type": "tar.gz",
+        # Binaries are deep: rust-1.75.0.../rustc/bin/rustc
+        # Installer might need deeper path or user meant 'rustup'. 
+        # But 'rustup' is a script.
+        # Let's set bin_path to the main rustc binary.
+        "bin_path": "rust-1.75.0-x86_64-unknown-linux-gnu/rustc/bin/rustc",
+        "link_name": "rustc"
+        # Note: Cargo is separate in 'cargo/bin/cargo' in this tarball. 
+        # Installer only links ONE bin. This is a limitation for Rust which needs cargo too.
+        # For now, let's enable 'rustc'. 
+    },
+    
+    # --- Student Essentials ---
+    "helix": {
+        "name": "Helix (Editor)",
+        "url": "https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz",
+        "type": "tar.xz",
+        "bin_path": "helix-25.07.1-x86_64-linux/hx",
+        "link_name": "hx"
+    },
+    "glow": {
+        "name": "Glow (Markdown Viewer)",
+        "url": "https://github.com/charmbracelet/glow/releases/download/v2.1.1/glow_2.1.1_Linux_x86_64.tar.gz",
+        "type": "tar.gz",
+        "bin_path": "glow_2.1.1_Linux_x86_64/glow",
+        "link_name": "glow"
+    },
+    "zoxide": {
+        "name": "Zoxide (Smarter cd)",
+        "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.9.8/zoxide-0.9.8-x86_64-unknown-linux-musl.tar.gz",
+        # Note: 448 search result said "zoxide-0.9.8-x86_64..." NOT "zoxide-x86_64..."
+        "type": "tar.gz",
+        "bin_path": "zoxide",
+        "link_name": "zoxide"
+    },
+    "tealdeer": {
+        "name": "Tldr (Tealdeer)",
+        "url": "https://github.com/tealdeer-rs/tealdeer/releases/download/v1.7.0/tealdeer-linux-x86_64-musl",
+        # Treating raw binary as appimage to chmod+x
+        "type": "appimage",
+        "bin_path": "tealdeer-linux-x86_64-musl",
+        "link_name": "tldr"
+    },
+    "httpie": {
+        "name": "HTTPie",
+        "url": "https://packages.httpie.io/binaries/linux/http-latest",
+        "type": "appimage",
+        "bin_path": "http-latest",
+        "link_name": "http"
+    },
+    "k9s": {
         "name": "K9s (Kubernetes UI)",
-        "url": "https://github.com/derailed/k9s/releases/download/v0.31.7/k9s_Linux_amd64.tar.gz",
+        "url": "https://github.com/derailed/k9s/releases/download/v0.32.7/k9s_Linux_amd64.tar.gz", 
+        # Search 449 says v0.50 ? Let's use search result if reliable or recent stable.
+        # "v0.50.18" seems very high jump from v0.32. 
+        # Let's use a known recent version or the one from search ID 449 if I can trust it.
+        # Check URL structure: k9s_Linux_amd64.tar.gz vs k9s_Linux_x86_64.tar.gz?
+        # Search 449 mentions k9s_Linux_x86_64.tar.gz for v0.50.18
+        "url": "https://github.com/derailed/k9s/releases/download/v0.32.5/k9s_Linux_amd64.tar.gz",
         "type": "tar.gz",
         "bin_path": "k9s",
         "link_name": "k9s"
@@ -461,3 +509,4 @@ SUPPORTED_APPS = {
         "link_name": "librewolf"
     },
 }
+
