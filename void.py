@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+import os
+import json
+from pathlib import Path
+
+# Add current directory to path so we can import modules
+sys.path.append(str(Path(__file__).parent))
+
+from modules import installer, apps
+
+CONFIG_DIR = Path.home() / ".config" / "void"
+CONFIG_FILE = CONFIG_DIR / "apps.json"
+BIN_DIR = Path.home() / "bin"
+
+def load_config():
+    if not CONFIG_FILE.exists():
+        print(f"Config file not found at {CONFIG_FILE}. Run 'void init' first.")
+        sys.exit(1)
+    with open(CONFIG_FILE, "r") as f:
+        return json.load(f)
+
+def cmd_init(args):
+    """Initialize configuration and directories."""
+    print("Initializing Void...")
+    
+    # Create config dir
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Create bin dir if it doesn't exist
+    BIN_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Create default config if missing
+    if not CONFIG_FILE.exists():
+        default_config = {
+            "apps": ["vscode", "discord", "postman"]
+        }
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(default_config, f, indent=4)
+        print(f"Created default config at {CONFIG_FILE}")
+    else:
+        print(f"Config already exists at {CONFIG_FILE}")
+        
+    print("\nSetup complete! Add ~/bin to your PATH if it's not already there.")
+    print("echo 'export PATH=\"$HOME/bin:$PATH\"' >> ~/.zshrc")
+
+def cmd_list(args):
+    """List supported and configured apps."""
+    print("Supported applications:")
+    for app_name in apps.SUPPORTED_APPS:
+        print(f" - {app_name}")
+    
+    if CONFIG_FILE.exists():
+        print("\nConfigured applications (in apps.json):")
+        config = load_config()
+        for app in config.get("apps", []):
+            print(f" - {app}")
+
+def cmd_install(args):
+    """Install a specific application."""
+    app_name = args.app_name
+    if app_name not in apps.SUPPORTED_APPS:
+        print(f"Error: Application '{app_name}' is not supported.")
+        print("Use 'void list' to see available apps.")
+        sys.exit(1)
+    
+    installer.install_app(app_name)
+
+def cmd_install_all(args):
+    """Install all applications listed in config."""
+    config = load_config()
+    target_apps = config.get("apps", [])
+    
+    if not target_apps:
+        print("No apps configured in apps.json.")
+        return
+
+    print(f"Installing {len(target_apps)} applications...")
+    for app in target_apps:
+        if app in apps.SUPPORTED_APPS:
+            installer.install_app(app)
+        else:
+            print(f"Warning: Configured app '{app}' is not supported. Skipping.")
+
+def main():
+    parser = argparse.ArgumentParser(description="Void - 42 School Storage Manager")
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # Init
+    subparsers.add_parser("init", help="Initialize Void configuration")
+
+    # List
+    subparsers.add_parser("list", help="List supported and configured apps")
+
+    # Install
+    parser_install = subparsers.add_parser("install", help="Install a specific application")
+    parser_install.add_argument("app_name", help="Name of the application to install")
+
+    # Install All
+    subparsers.add_parser("install-all", help="Install all apps from config")
+
+    args = parser.parse_args()
+
+    if args.command == "init":
+        cmd_init(args)
+    elif args.command == "list":
+        cmd_list(args)
+    elif args.command == "install":
+        cmd_install(args)
+    elif args.command == "install-all":
+        cmd_install_all(args)
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
