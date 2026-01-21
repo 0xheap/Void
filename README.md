@@ -141,4 +141,4 @@ Let's say you want to add a tool called "SuperTool".
 ---
 
 ## 📝 License
-This project is open source. Feel free to modify and share!
+Made by Abdessel [1337 Student]
