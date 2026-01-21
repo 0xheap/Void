@@ -504,6 +504,13 @@ SUPPORTED_APPS = {
         "bin_path": "opt/google/chrome/google-chrome",
         "link_name": "google-chrome"
     },
+    "zen browser": {
+        "name": "zen browser",
+        "url": "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz",
+        "type": "tar.xz",
+        "bin_path": "zen/zen/",
+        "link_name": "zen"
+    },
     # "brave": {
     #     "name": "Brave Browser",
     #     "url": "https://github.com/ivan-hc/Brave-appimage/releases/download/continuous/Brave-x86_64.AppImage",
