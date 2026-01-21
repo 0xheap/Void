@@ -1,6 +1,6 @@
-# Void - 42 School Storage Manager
+# Void - 1337 School Storage Manager
 
-**Void** is a lightweight, Python-based CLI & TUI tool designed specifically for **42 School students**. It helps you manage your limited home partition space (5GB quota) by installing heavy applications directly into the `/goinfre` partition while keeping them accessible from your shell.
+**Void** is a lightweight, Python-based CLI & TUI tool designed specifically for **1337 School students**. It helps you manage your limited home partition space (5GB quota) by installing heavy applications directly into the `/goinfre` partition while keeping them accessible from your shell.
 
 ![Void TUI](https://img.shields.io/badge/Interface-CLI%20%26%20TUI-blueviolet)
 ![Python](https://img.shields.io/badge/Language-Python%203-blue)
