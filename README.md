@@ -1,6 +1,6 @@
-# Void - 1337 School Storage Manager
+# Void - 42 School Storage Manager
 
-**Void** is a lightweight, Python-based CLI & TUI tool designed specifically for **1337 School students**. It helps you manage your limited home partition space (5GB quota) by installing heavy applications directly into the `/goinfre` partition while keeping them accessible from your shell.
+**Void** is a lightweight, Python-based CLI & TUI tool designed specifically for **42 School students**. It helps you manage your limited home partition space (5GB quota) by installing heavy applications directly into the `/goinfre` partition while keeping them accessible from your shell.
 
 ![Void TUI](https://img.shields.io/badge/Interface-CLI%20%26%20TUI-blueviolet)
 ![Python](https://img.shields.io/badge/Language-Python%203-blue)
@@ -9,10 +9,12 @@
 ## 🚀 Key Features
 
 *   **Smart Installation**: Installs apps to `/goinfre/$USER/void/apps/` to save home space.
+*   **Custom Apps**: Add your own applications by creating a `custom_apps.json` config!
+*   **No FUSE Required**: AppImages are automatically extracted, making them compatible with strict environments like 42 `goinfre`.
 *   **Seamless Integration**: Automatically symlinks binaries to `~/bin` so you can run them from anywhere.
 *   **Data Syncing**: Moves heavy config/cache directories (like `~/.vscode` or `~/.config/discord`) to `/goinfre` and links them back, saving GBs of space.
-*   **Interactive TUI**: A beautiful, easy-to-use Text User Interface to browse and select apps.
-*   **Uninstall**: cleanly removes applications and links when you're done.
+*   **Interactive TUI**: A beautiful terminal interface with **Search**, Filtering, and Status indicators.
+*   **Uninstall**: Cleanly removes applications and links when you're done.
 *   **Portable**: No root access required. No dependencies (uses standard Python library).
 
 ---
@@ -48,32 +50,83 @@
 You can use Void in two modes: **Interactive TUI** (Recommended) or **Command Line**.
 
 ### Interactive Mode (TUI)
-Just run the script without arguments:
+The recommended way to use Void.
 ```bash
 ./void.py
 ```
-*   **Arrow Keys**: Navigate the list.
-*   **Space**: Toggle selection (`[*]` for Install, `[R]` for Uninstall).
-*   **Enter**: Apply changes.
+**Controls:**
+*   **`↑` / `↓`**: Navigate the application list.
+*   **`/` or `s`**: **Search** for an application by name.
+*   **`Space`**: Toggle selection to Install `[*]`, Uninstall `[ ]`, or Keep `[I]`.
+*   **`Enter`**: Process all selected changes (Install/Uninstall).
+*   **`Esc`**: Clear search or cancel action.
+*   **`q`**: Quit.
 
 ### Command Line Interface (CLI)
-*   **List supported apps**:
+Automation-friendly commands.
+
+*   **List all apps**:
     ```bash
     ./void.py list
     ```
-*   **Install an app**:
+*   **Install applications**:
     ```bash
     ./void.py install vscode
-    ./void.py install neovim
+    ./void.py install discord neovim
     ```
-*   **Uninstall an app**:
+*   **Uninstall applications**:
     ```bash
     ./void.py uninstall vscode
     ```
-*   **Install all favorites** (from config):
+*   **Install from Config**:
+    Restore your favorite apps defined in `~/.config/void/apps.json`:
     ```bash
     ./void.py install-all
     ```
+*   **Update Desktop Entry**:
+    Fix a broken icon or update properties:
+    ```bash
+    ./void.py entry -a vscode -i /path/to/icon.png
+    ```
+
+## 🛠 Adding Custom Apps
+
+You can add your own applications without editing the code!
+Create a file at `~/.config/void/custom_apps.json` and add your definitions.
+
+### Example `custom_apps.json`
+```json
+{
+    "my-app": {
+        "name": "My Custom App",
+        "url": "https://example.com/download/app-linux.tar.gz",
+        "type": "tar.gz",
+        "bin_path": "AppFolder/bin/executable",
+        "link_name": "myapp",
+        "data_paths": [
+            ".config/myapp"
+        ]
+    }
+}
+```
+
+### Configuration Keys Explained
+
+*   **`name`** (Required): The human-readable name shown in the TUI.
+*   **`url`** (Required): Direct download link to the file.
+    *   Supported formats: `.tar.gz`, `.tar.xz`, `.zip`, `.deb`, `.AppImage`.
+*   **`type`** (Required): The archive type.
+    *   `tar.gz`, `tar.xz`, `zip`: Will be extracted.
+    *   `appimage`: Will be downloaded, made executable, and extracted (to avoid FUSE issues).
+    *   `deb`: Will be extracted using `dpkg -x`.
+*   **`bin_path`** (Required): The relative path to the binary *inside* the extracted archive.
+    *   For **AppImages**, always use the filename itself (e.g., `MyApp.AppImage`). The installer automatically links to the extracted `AppRun`.
+    *   For **Tarballs/Zips**, explore the archive to find the executable path (e.g., `StartFolder/bin/start.sh`).
+*   **`link_name`** (Required): The name of the command created in `~/bin`.
+    *   Example: `"link_name": "code"` allows you to run `code` from the terminal.
+*   **`data_paths`** (Optional): A list of folders in your Home directory that this app uses heavily (config, cache, etc.).
+    *   **Void Magic**: These folders will be moved to `/goinfre` and symlinked back to `~`.
+    *   Example: `[".config/Code", ".vscode"]` saves GBs of space for VSCode.
 
 ---
 
@@ -141,4 +194,4 @@ Let's say you want to add a tool called "SuperTool".
 ---
 
 ## 📝 License
-Made by Abdessel [1337 Student]
+This project is open source. Feel free to modify and share!
