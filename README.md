@@ -1,6 +1,6 @@
-# Void - 42 School Storage Manager
+# Void - 1337 School Storage Manager
 
-**Void** is a lightweight, Python-based CLI & TUI tool designed specifically for **42 School students**. It helps you manage your limited home partition space (5GB quota) by installing heavy applications directly into the `/goinfre` partition while keeping them accessible from your shell.
+**Void** is a lightweight, Python-based CLI & TUI tool designed specifically for **1337 School students**. It helps you manage your limited home partition space (5GB quota) by installing heavy applications directly into the `/goinfre` partition while keeping them accessible from your shell.
 
 ![Void TUI](https://img.shields.io/badge/Interface-CLI%20%26%20TUI-blueviolet)
 ![Python](https://img.shields.io/badge/Language-Python%203-blue)
@@ -10,7 +10,7 @@
 
 *   **Smart Installation**: Installs apps to `/goinfre/$USER/void/apps/` to save home space.
 *   **Custom Apps**: Add your own applications by creating a `custom_apps.json` config!
-*   **No FUSE Required**: AppImages are automatically extracted, making them compatible with strict environments like 42 `goinfre`.
+*   **No FUSE Required**: AppImages are automatically extracted, making them compatible with strict environments like 1337 `goinfre`.
 *   **Seamless Integration**: Automatically symlinks binaries to `~/bin` so you can run them from anywhere.
 *   **Data Syncing**: Moves heavy config/cache directories (like `~/.vscode` or `~/.config/discord`) to `/goinfre` and links them back, saving GBs of space.
 *   **Interactive TUI**: A beautiful terminal interface with **Search**, Filtering, and Status indicators.
