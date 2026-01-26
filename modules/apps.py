@@ -231,13 +231,26 @@ SUPPORTED_APPS = {
         "bin_path": "audacity-linux-3.4.2-x64.AppImage",
         "link_name": "audacity"
     },
-    
+    "mega": {
+        "name": "Mega",
+        "url": "https://mega.nz/linux/repo/xUbuntu_22.04/amd64/megasync-xUbuntu_22.04_amd64.deb",
+        "type": "deb",
+        "bin_path": "usr/bin/megasync",
+        "link_name": "mega"
+    },
+    "cursor": {
+        "name": "cursor",
+        "url": "https://api2.cursor.sh/updates/download/golden/linux-x64-deb/cursor/2.4",
+        "type": "deb",
+        "bin_path": "usr/share/cursor/bin/cursor",
+        "link_name": "cursor"
+    },
     # --- Utilities ---
     "obsidian": {
         "name": "Obsidian",
-        "url": "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.5.3/Obsidian-1.5.3.AppImage",
+        "url": "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.11.5/Obsidian-1.11.5.AppImage",
         "type": "appimage",
-        "bin_path": "Obsidian-1.5.3.AppImage",
+        "bin_path": "Obsidian-1.11.5.AppImage",
         "link_name": "obsidian"
     },
     "notion-enhanced": {
@@ -465,8 +478,9 @@ SUPPORTED_APPS = {
     "terraform": {
         "name": "Terraform",
         "url": "https://releases.hashicorp.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip",
-        "type": "zip", 
-        # Need zip support.
+        "type": "zip",
+        "bin_path": "terraform",
+        "link_name": "terraform"
     },
     
     # --- System ---

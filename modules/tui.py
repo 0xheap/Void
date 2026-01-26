@@ -2,7 +2,7 @@ import curses
 import sys
 import os
 from pathlib import Path
-from . import apps, installer
+from . import apps, installer, cleanup
 
 
 class VoidTUI:
@@ -82,7 +82,7 @@ class VoidTUI:
         if self.search_mode:
             status_bar = " TYPE to search | ENTER: Done | ESC: Cancel "
         else:
-            status_bar = f" UP/DOWN: Navigate | SPACE: Toggle | /: Search | ENTER: Install ({len(self.selected_indices)}) | q: Quit "
+            status_bar = f" UP/DOWN: Navigate | SPACE: Toggle | /: Search | ENTER: Install ({len(self.selected_indices)}) | c: Cleanup | q: Quit "
 
         try:
             self.stdscr.addstr(
@@ -195,6 +195,8 @@ class VoidTUI:
             if self.selected_indices:
                 self.run_install()
                 self.selected_indices.clear()  # Clear selection after install
+        elif key == ord('c'):
+            self.run_cleanup()
         elif key == ord('q'):
             return False
 
@@ -263,6 +265,89 @@ class VoidTUI:
         win.addstr(4, 2, "Press any key to return to menu.")
         win.refresh()
         win.getch()
+
+    def run_cleanup(self):
+        """Show cleanup analysis and allow user to clean."""
+        height, width = self.stdscr.getmaxyx()
+        win = curses.newwin(height - 4, width - 4, 2, 2)
+        win.box()
+        
+        win.addstr(1, 2, "Analyzing home directory...")
+        win.refresh()
+        
+        try:
+            # Analyze cleanup opportunities
+            analysis = cleanup.analyze_home_space()
+            disk_info = analysis['disk_info']
+            
+            win.clear()
+            win.box()
+            
+            # Show disk usage
+            y = 1
+            win.addstr(y, 2, f"Disk Usage: {disk_info['path']}", curses.A_BOLD)
+            y += 1
+            win.addstr(y, 4, f"Total: {cleanup.format_size(disk_info['total'])}")
+            y += 1
+            win.addstr(y, 4, f"Used:  {cleanup.format_size(disk_info['used'])} ({analysis['usage_percent']:.1f}%)")
+            y += 1
+            win.addstr(y, 4, f"Free:  {cleanup.format_size(disk_info['free'])}")
+            y += 2
+            
+            if analysis['cleanup_items']:
+                win.addstr(y, 2, f"Found {len(analysis['cleanup_items'])} items to clean:", curses.A_BOLD)
+                y += 1
+                win.addstr(y, 4, f"Total cleanable: {cleanup.format_size(analysis['total_cleanable'])}")
+                y += 2
+                
+                # Show top categories
+                win.addstr(y, 2, "Top categories:", curses.A_BOLD)
+                y += 1
+                for category, items in list(analysis['by_category'].items())[:5]:
+                    cat_size = sum(item.size for item in items)
+                    win.addstr(y, 4, f"{category}: {len(items)} items ({cleanup.format_size(cat_size)})")
+                    y += 1
+                    if y >= height - 8:
+                        break
+                
+                y += 1
+                win.addstr(y, 2, "Press 'y' to clean, any other key to cancel")
+            else:
+                win.addstr(y, 2, "No cleanup opportunities found. Your home is clean!")
+                y += 2
+                win.addstr(y, 2, "Press any key to continue")
+            
+            win.refresh()
+            key = win.getch()
+            
+            if key == ord('y') and analysis['cleanup_items']:
+                # Execute cleanup
+                win.clear()
+                win.box()
+                win.addstr(2, 2, "Cleaning up... Please wait...")
+                win.refresh()
+                
+                items_cleaned, bytes_freed = cleanup.cleanup_items(
+                    analysis['cleanup_items'], dry_run=False)
+                
+                win.clear()
+                win.box()
+                win.addstr(2, 2, f"✓ Cleaned {items_cleaned} items", curses.color_pair(2))
+                win.addstr(3, 2, f"✓ Freed {cleanup.format_size(bytes_freed)}")
+                
+                # Show updated disk usage
+                disk_info = cleanup.get_disk_usage()
+                win.addstr(5, 2, f"Updated free space: {cleanup.format_size(disk_info['free'])}")
+                win.addstr(7, 2, "Press any key to continue")
+                win.refresh()
+                win.getch()
+        except Exception as e:
+            win.clear()
+            win.box()
+            win.addstr(2, 2, f"Error: {str(e)}")
+            win.addstr(4, 2, "Press any key to continue")
+            win.refresh()
+            win.getch()
 
 
 def run(missing_path=False):

@@ -2,6 +2,7 @@ import os
 import shutil
 import urllib.request
 import tarfile
+import zipfile
 import subprocess
 from pathlib import Path
 import sys
@@ -105,6 +106,22 @@ def extract_tar(archive_path, extract_to):
         print("Extraction complete.")
     except Exception as e:
         print(f"Error extracting {archive_path}: {e}")
+        raise e
+
+
+def extract_zip(archive_path, extract_to):
+    """
+    Extract .zip archive.
+    Extracts to 'extract_to' directory.
+    """
+    print(f"Extracting ZIP {archive_path}...")
+    try:
+        Path(extract_to).mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+            zip_ref.extractall(path=extract_to)
+        print("Extraction complete.")
+    except Exception as e:
+        print(f"Error extracting zip: {e}")
         raise e
 
 
@@ -340,8 +357,14 @@ def install_app(app_name):
             extract_deb(temp_download_path, app_install_dir)
             temp_download_path.unlink()
 
+        elif app_info["type"] == "zip":
+            # ZIP logic
+            app_install_dir.mkdir(parents=True, exist_ok=True)
+            extract_zip(temp_download_path, app_install_dir)
+            temp_download_path.unlink()
+
         else:
-            # Tarball logic
+            # Tarball logic (tar.gz, tar.xz, tar.bz2)
             app_install_dir.mkdir(parents=True, exist_ok=True)
             extract_tar(temp_download_path, app_install_dir)
             temp_download_path.unlink()

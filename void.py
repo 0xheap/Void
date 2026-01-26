@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from modules import installer, apps, tui
+from modules import installer, apps, tui, cleanup, inspector
 import argparse
 import sys
 import os
@@ -157,6 +157,179 @@ def cmd_entry(args):
     installer.create_desktop_entry(app_name, app_info, custom_icon=icon_path)
 
 
+def cmd_cleanup_analyze(args):
+    """Analyze home directory and show cleanup opportunities."""
+    print("\n" + "="*60)
+    print(" Analyzing Home Directory Space Usage")
+    print("="*60 + "\n")
+    
+    analysis = cleanup.analyze_home_space()
+    disk_info = analysis['disk_info']
+    
+    # Show disk usage
+    print(f"Disk Usage for {disk_info['path']}:")
+    print(f"  Total: {cleanup.format_size(disk_info['total'])}")
+    print(f"  Used:  {cleanup.format_size(disk_info['used'])} ({analysis['usage_percent']:.1f}%)")
+    print(f"  Free:  {cleanup.format_size(disk_info['free'])}")
+    print()
+    
+    # Show cleanup opportunities
+    if analysis['cleanup_items']:
+        print(f"Found {len(analysis['cleanup_items'])} items that can be cleaned:")
+        print(f"  Total cleanable: {cleanup.format_size(analysis['total_cleanable'])}")
+        print()
+        
+        # Group by category
+        for category, items in analysis['by_category'].items():
+            cat_size = sum(item.size for item in items)
+            print(f"  {category}: {len(items)} items ({cleanup.format_size(cat_size)})")
+            for item in sorted(items, key=lambda x: x.size, reverse=True)[:5]:  # Show top 5
+                print(f"    - {item.path.relative_to(Path.home())}: {cleanup.format_size(item.size)}")
+            if len(items) > 5:
+                print(f"    ... and {len(items) - 5} more")
+        print()
+        print("Run 'void cleanup --execute' to clean these files.")
+    else:
+        print("No cleanup opportunities found. Your home directory is clean!")
+    print()
+
+
+def cmd_cleanup_execute(args):
+    """Execute cleanup of safe-to-delete files."""
+    print("\n" + "="*60)
+    print(" Cleaning Home Directory")
+    print("="*60 + "\n")
+    
+    analysis = cleanup.analyze_home_space()
+    
+    if not analysis['cleanup_items']:
+        print("No cleanup opportunities found.")
+        return
+    
+    print(f"Found {len(analysis['cleanup_items'])} items to clean.")
+    print(f"Total size: {cleanup.format_size(analysis['total_cleanable'])}")
+    print()
+    
+    if not args.yes:
+        response = input("Do you want to proceed? (yes/no): ").strip().lower()
+        if response not in ['yes', 'y']:
+            print("Cleanup cancelled.")
+            return
+    
+    print("\nCleaning up...")
+    items_cleaned, bytes_freed = cleanup.cleanup_items(analysis['cleanup_items'], dry_run=False)
+    
+    print(f"\n✓ Cleaned {items_cleaned} items")
+    print(f"✓ Freed {cleanup.format_size(bytes_freed)}")
+    
+    # Show updated disk usage
+    disk_info = cleanup.get_disk_usage()
+    print(f"\nUpdated disk usage:")
+    print(f"  Free: {cleanup.format_size(disk_info['free'])}")
+    print()
+
+
+def cmd_inspect(args):
+    """Inspect an archive to find the correct bin_path."""
+    url = args.url
+    archive_type = args.type
+    
+    print("\n" + "="*60)
+    print(" Archive Inspector - Finding bin_path")
+    print("="*60 + "\n")
+    print("This tool will help you find the correct 'bin_path' for your app.")
+    print("It downloads and extracts the archive to show its structure.\n")
+    
+    result = None
+    try:
+        result = inspector.inspect_archive(url, archive_type)
+        
+        print("\n" + "="*60)
+        print(" Archive Structure Analysis")
+        print("="*60 + "\n")
+        
+        print(f"Archive Type: {result['archive_type']}")
+        if result['extract_root'] != ".":
+            print(f"Root Directory: {result['extract_root']}")
+        print()
+        
+        # Show directory tree
+        print("Directory Structure:")
+        print("-" * 60)
+        for line in result['directory_tree'][:30]:  # Limit output
+            print(line)
+        if len(result['directory_tree']) > 30:
+            print("... (showing first 30 items)")
+        print()
+        
+        # Show potential executables
+        if result['executables']:
+            print("="*60)
+            print(" Potential Binaries (sorted by relevance)")
+            print("="*60 + "\n")
+            
+            for i, exe in enumerate(result['executables'][:10], 1):  # Top 10
+                score_stars = "★" * min(exe['score'] // 3, 5)
+                exec_marker = " [EXECUTABLE]" if exe['is_executable'] else ""
+                size_mb = exe['size'] / (1024 * 1024) if exe['size'] > 0 else 0
+                size_str = f" ({size_mb:.1f} MB)" if size_mb > 0 else ""
+                
+                print(f"{i}. {score_stars} {exe['path']}{exec_marker}{size_str}")
+                print(f"   Score: {exe['score']}, Parent: {exe['parent']}")
+                print()
+            
+            # Suggest the best one
+            best = result['executables'][0]
+            print("="*60)
+            print(" RECOMMENDED bin_path:")
+            print("="*60)
+            print(f"\n  \"bin_path\": \"{best['path']}\"")
+            print()
+            
+            if result['extract_root'] != ".":
+                print(f"Note: Archive extracts to '{result['extract_root']}/' directory")
+                print(f"      Your bin_path should be relative to that root.")
+            print()
+            
+            print("If this doesn't look right, check the directory structure above")
+            print("and choose the correct path to your executable.")
+        else:
+            print("⚠ No obvious binaries found.")
+            print("Please check the directory structure above to find your executable.")
+            print()
+        
+        print("="*60)
+        print(" Example Configuration")
+        print("="*60)
+        print("\nBased on this analysis, your app entry might look like:")
+        print()
+        print(f'    "my-app": {{')
+        print(f'        "name": "My App",')
+        print(f'        "url": "{url}",')
+        print(f'        "type": "{result["archive_type"]}",')
+        if result['executables']:
+            print(f'        "bin_path": "{result["executables"][0]["path"]}",')
+        else:
+            print(f'        "bin_path": "path/to/your/executable",  # FIXME: Find this!')
+        print(f'        "link_name": "myapp"')
+        print(f'    }}')
+        print()
+        
+    except KeyboardInterrupt:
+        print("\n\nInspection cancelled by user.")
+    except Exception as e:
+        print(f"\n❌ Error during inspection: {e}")
+        import traceback
+        if args.verbose:
+            traceback.print_exc()
+    finally:
+        # Cleanup
+        if result and 'temp_dir' in result:
+            print("\nCleaning up temporary files...")
+            inspector.cleanup_temp(result['temp_dir'])
+            print("Done.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Void - 1337 School Storage Manager made by ['abdessel']")
@@ -194,6 +367,25 @@ def main():
     # TUI
     subparsers.add_parser("tui", help="Launch Text User Interface (Default)")
 
+    # Cleanup
+    parser_cleanup = subparsers.add_parser(
+        "cleanup", help="Clean up safe-to-delete files from home directory")
+    parser_cleanup.add_argument(
+        "--execute", action="store_true", help="Execute cleanup (default: analyze only)")
+    parser_cleanup.add_argument(
+        "-y", "--yes", action="store_true", help="Skip confirmation prompt")
+
+    # Inspect
+    parser_inspect = subparsers.add_parser(
+        "inspect", help="Inspect an archive to find the correct bin_path")
+    parser_inspect.add_argument(
+        "url", help="URL of the archive to inspect")
+    parser_inspect.add_argument(
+        "-t", "--type", help="Archive type (auto-detected if not specified)",
+        choices=["tar.gz", "tar.xz", "tar.bz2", "zip", "deb", "appimage"])
+    parser_inspect.add_argument(
+        "-v", "--verbose", action="store_true", help="Show detailed error messages")
+
     # Load custom apps
     load_custom_apps()
 
@@ -213,6 +405,13 @@ def main():
         cmd_entry(args)
     elif args.command == "tui":
         tui.run()
+    elif args.command == "cleanup":
+        if args.execute:
+            cmd_cleanup_execute(args)
+        else:
+            cmd_cleanup_analyze(args)
+    elif args.command == "inspect":
+        cmd_inspect(args)
     else:
         # Default to TUI if no args, or help?
         # User requested tool to be a TUI tool. Defaulting to TUI is nice.
