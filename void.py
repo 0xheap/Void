@@ -330,6 +330,67 @@ def cmd_inspect(args):
             print("Done.")
 
 
+def cmd_health(args):
+    """Check health of installed apps (bin symlinks, data symlinks)."""
+    print("\n" + "="*60)
+    print(" Installed Apps Health Check")
+    print("="*60 + "\n")
+    app_name = getattr(args, "app_name", None)
+    if app_name:
+        apps_to_check = [app_name]
+        if app_name not in apps.SUPPORTED_APPS:
+            print(f"Error: Unknown app '{app_name}'.")
+            return
+    else:
+        apps_to_check = installer.get_installed_apps()
+    if not apps_to_check:
+        print("No installed apps found.")
+        return
+    all_ok = True
+    for app_name in apps_to_check:
+        h = installer.check_app_health(app_name)
+        status = "✓ OK" if h["ok"] else "✗ ISSUES"
+        if not h["ok"]:
+            all_ok = False
+        print(f"  {app_name}: {status}")
+        for issue in h["issues"]:
+            print(f"    - {issue}")
+    if not all_ok:
+        print("\nRun './void.py repair' to fix symlinks (e.g. after migrating to a new post).")
+    print()
+
+
+def cmd_repair(args):
+    """Re-establish symlinks for installed apps (use after migrating to a new post)."""
+    print("\n" + "="*60)
+    print(" Repair / Relink Installed Apps")
+    print("="*60 + "\n")
+    app_name = getattr(args, "app_name", None)
+    if app_name:
+        apps_to_repair = [app_name]
+        if app_name not in apps.SUPPORTED_APPS:
+            print(f"Error: Unknown app '{app_name}'.")
+            return
+    else:
+        apps_to_repair = installer.get_installed_apps()
+    if not apps_to_repair:
+        print("No installed apps to repair.")
+        return
+    repaired, failed = 0, []
+    for app_name in apps_to_repair:
+        try:
+            if installer.repair_app(app_name):
+                repaired += 1
+        except Exception as e:
+            failed.append((app_name, str(e)))
+    print(f"\nRepaired {repaired} app(s).")
+    if failed:
+        print("Failed:")
+        for app_name, err in failed:
+            print(f"  - {app_name}: {err}")
+    print()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Void - 1337 School Storage Manager made by ['abdessel']")
@@ -386,6 +447,18 @@ def main():
     parser_inspect.add_argument(
         "-v", "--verbose", action="store_true", help="Show detailed error messages")
 
+    # Health check
+    parser_health = subparsers.add_parser(
+        "health", help="Check health of installed apps (symlinks, data dirs)")
+    parser_health.add_argument(
+        "app_name", nargs="?", help="Check specific app (default: all installed)")
+
+    # Repair / Relink
+    parser_repair = subparsers.add_parser(
+        "repair", help="Re-establish symlinks (run after migrating to a new post)")
+    parser_repair.add_argument(
+        "app_name", nargs="?", help="Repair specific app (default: all installed)")
+
     # Load custom apps
     load_custom_apps()
 
@@ -412,6 +485,10 @@ def main():
             cmd_cleanup_analyze(args)
     elif args.command == "inspect":
         cmd_inspect(args)
+    elif args.command == "health":
+        cmd_health(args)
+    elif args.command == "repair":
+        cmd_repair(args)
     else:
         # Default to TUI if no args, or help?
         # User requested tool to be a TUI tool. Defaulting to TUI is nice.

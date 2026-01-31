@@ -214,6 +214,26 @@ The inspector will:
 ./void.py cleanup --execute -y
 ```
 
+#### Health Check & Repair (Migration)
+
+**Check health of installed apps** (bin symlinks, data dir symlinks):
+```bash
+./void.py health              # All installed apps
+./void.py health vscode       # One app
+```
+
+**Repair / relink after migrating to a new post** (fixes broken symlinks like `~/.vscode`):
+```bash
+./void.py repair              # Repair all installed apps
+./void.py repair vscode       # Repair one app
+```
+
+Use `repair` when you see errors like:
+- `mkdir: cannot create directory '/home/user/.vscode': File exists`
+- `ln: failed to create symbolic link '/home/user/.vscode/extensions': No such file or directory`
+
+These happen when symlinks from the old post point to paths that no longer exist. Running `./void.py repair` removes broken symlinks and re-creates correct ones for the current post.
+
 ---
 
 ## 🛠 Adding Custom Applications
@@ -884,6 +904,28 @@ Run 'void cleanup --execute' to clean these files.
    ls -l /goinfre/$USER/void/apps/<app-name>/<bin_path>
    ```
 5. Ensure all dependencies are installed (some apps require system libraries)
+
+#### Migration to a new post (broken symlinks)
+
+**Problem:** After changing post (workspace), apps fail to launch or you see:
+- `mkdir: cannot create directory '/home/user/.vscode': File exists`
+- `ln: failed to create symbolic link '/home/user/.vscode/extensions': No such file or directory`
+
+**Cause:** Data dirs (e.g. `~/.vscode`) were symlinks to the old post’s goinfre path. After migration they are broken.
+
+**Solutions:**
+1. **Check health:**
+   ```bash
+   ./void.py health
+   ```
+2. **Repair all installed apps** (removes broken symlinks and re-creates correct ones):
+   ```bash
+   ./void.py repair
+   ```
+3. To repair only one app:
+   ```bash
+   ./void.py repair vscode
+   ```
 
 #### Low disk space warnings
 

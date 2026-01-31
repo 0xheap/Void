@@ -9,7 +9,7 @@ SUPPORTED_APPS = {
         "bin_path": "VSCode-linux-x64/bin/code",
         "link_name": "code",
         "data_paths": [
-            ".vscode",         # Extensions (Home relative)
+            ".vscode/extensions",  # Extensions (keep ~/.vscode as a real dir)
             ".config/Code"     # Cache & Config
         ]
     },

@@ -18,10 +18,75 @@ BIN_DIR = Path.home() / "bin"
 DESKTOP_DIR = Path.home() / ".local" / "share" / "applications"
 
 
+def _remove_home_path_for_relink(home_path):
+    """
+    Remove home_path so we can create a new symlink.
+    Handles: real dir, symlink (including broken symlinks after migration).
+    """
+    if not home_path.exists() and not home_path.is_symlink():
+        return
+    # Always unlink symlinks (broken or not) - rmtree would follow link or fail
+    if home_path.is_symlink():
+        home_path.unlink()
+        return
+    if home_path.is_dir():
+        shutil.rmtree(home_path)
+    else:
+        home_path.unlink()
+
+
+def _materialize_symlink_dir(dir_path: Path, exclude_names=None):
+    """
+    If dir_path is a symlink to an existing directory, replace it with a real
+    directory at the same path and move the symlink target contents into it.
+
+    This is important for apps that expect to `mkdir` parent dirs (e.g. VSCode
+    expects ~/.vscode to be a real directory).
+
+    exclude_names: iterable of entry names to leave at the old target (useful
+    when a subdir will be re-symlinked separately, e.g. "extensions").
+    """
+    exclude = set(exclude_names or [])
+    if not dir_path.is_symlink():
+        return
+    try:
+        target = dir_path.resolve()
+    except OSError:
+        # Broken symlink: just replace with a real directory
+        dir_path.unlink()
+        dir_path.mkdir(parents=True, exist_ok=True)
+        return
+
+    # Only materialize if target exists and is a directory
+    if not target.exists() or not target.is_dir():
+        dir_path.unlink()
+        dir_path.mkdir(parents=True, exist_ok=True)
+        return
+
+    # Replace symlink with real dir
+    dir_path.unlink()
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Move content from old target into the new real dir (except excluded)
+    for entry in target.iterdir():
+        if entry.name in exclude:
+            continue
+        dest = dir_path / entry.name
+        if dest.exists() or dest.is_symlink():
+            # Keep existing destination; don't overwrite user data
+            continue
+        try:
+            shutil.move(str(entry), str(dest))
+        except Exception:
+            # Best-effort: ignore move failures
+            pass
+
+
 def link_data_dirs(app_name, data_paths):
     """
     Move existing data dirs from Home to Goinfre and symlink them.
     If Home dir doesn't exist, create it in Goinfre and link.
+    Handles broken symlinks (e.g. after migrating to a new post).
     """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -30,22 +95,34 @@ def link_data_dirs(app_name, data_paths):
         goinfre_path = DATA_DIR / app_name / \
             relative_path.replace("/", "_").strip(".")
 
+        # If we're linking a nested path (e.g. ~/.vscode/extensions),
+        # ensure the parent in $HOME is a real directory (not a symlink).
+        # This avoids "mkdir: ... File exists" errors from apps/scripts that
+        # expect to create the parent directory.
+        if home_path.parent != Path.home():
+            _materialize_symlink_dir(home_path.parent, exclude_names=[home_path.name])
+            home_path.parent.mkdir(parents=True, exist_ok=True)
+
         # Ensure goinfre parent exists
         goinfre_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Case 1: Symlink already correct
-        if home_path.is_symlink() and home_path.resolve() == goinfre_path.resolve():
-            continue
+        # NOTE: also ensure the goinfre target exists. It's possible to have a
+        # symlink that points to the right place but the target directory was
+        # wiped (common after migration / cleanup).
+        if home_path.is_symlink():
+            try:
+                if home_path.resolve() == goinfre_path.resolve():
+                    if not goinfre_path.exists():
+                        goinfre_path.mkdir(parents=True, exist_ok=True)
+                    continue
+            except (OSError, RuntimeError):
+                # Broken symlink (e.g. old post path) - we will relink below
+                pass
 
         # Case 2: Real directory exists in Home (User has existing data)
         if home_path.exists() and not home_path.is_symlink():
-            print(
-                f"Moving existing data from {home_path} to {goinfre_path}...")
-            # If goinfre path exists (e.g. from previous session), we merge or backup?
-            # For 1337 context: locally stored usually wiped. So goinfre path likely empty or we overwrite home?
-            # Safer: if goinfre exists, we might have conflict.
-            # Strategy: Move Home -> Goinfre. If Goinfre exists, we assume Goinfre is more 'recent' or we just use Goinfre?
-            # Actually, if user has data in Home, that's valuable.
+            print(f"Moving existing data from {home_path} to {goinfre_path}...")
             if goinfre_path.exists():
                 print(
                     f"Warning: {goinfre_path} already exists. Backing up home version and using goinfre.")
@@ -53,17 +130,12 @@ def link_data_dirs(app_name, data_paths):
             else:
                 shutil.move(home_path, goinfre_path)
 
-        # Case 3: Nothing in Home. Create in Goinfre.
+        # Case 3: Nothing in Goinfre yet. Create directory in Goinfre.
         if not goinfre_path.exists():
             goinfre_path.mkdir(parents=True, exist_ok=True)
 
-        # Create Symlink
-        # If home_path exists (folder/file), remove it (it might be empty dir created by app automatically)
-        if home_path.exists() or home_path.is_symlink():
-            if home_path.is_dir():
-                shutil.rmtree(home_path)
-            else:
-                home_path.unlink()
+        # Remove whatever is at home_path (real dir, symlink, or broken symlink)
+        _remove_home_path_for_relink(home_path)
 
         # Ensure parent of home_path exists (e.g. .config/)
         home_path.parent.mkdir(parents=True, exist_ok=True)
@@ -434,3 +506,130 @@ def uninstall_app(app_name):
     #     print(f"Note: Data directory preserved at {data_path}")
 
     print(f"Successfully uninstalled {app_name}")
+
+
+def get_installed_apps():
+    """Return list of app names that have an installation directory in APPS_DIR."""
+    if not APPS_DIR.exists():
+        return []
+    return [d.name for d in APPS_DIR.iterdir() if d.is_dir() and d.name in apps.SUPPORTED_APPS]
+
+
+def check_app_health(app_name):
+    """
+    Check if an installed app is healthy: binary exists, bin symlink valid, data symlinks valid.
+    Returns dict: ok (bool), binary_ok, symlink_ok, data_links_ok, issues (list of strings).
+    """
+    if app_name not in apps.SUPPORTED_APPS:
+        return {"ok": False, "issues": [f"Unknown app: {app_name}"]}
+    app_info = apps.SUPPORTED_APPS[app_name]
+    app_install_dir = APPS_DIR / app_name
+    issues = []
+
+    # Binary
+    if app_info["type"] == "appimage":
+        binary_path = app_install_dir / "AppRun"
+    else:
+        binary_path = app_install_dir / app_info["bin_path"]
+    binary_ok = binary_path.exists()
+    if not binary_ok:
+        issues.append(f"Binary missing: {binary_path}")
+
+    # Bin symlink
+    link_path = BIN_DIR / app_info["link_name"]
+    symlink_ok = link_path.is_symlink()
+    if symlink_ok:
+        try:
+            target = link_path.resolve()
+            if target != binary_path.resolve():
+                symlink_ok = False
+                issues.append(f"Bin symlink points to wrong target: {link_path} -> {target}")
+        except OSError:
+            symlink_ok = False
+            issues.append(f"Broken bin symlink: {link_path}")
+    else:
+        if link_path.exists():
+            issues.append(f"Bin path is not a symlink: {link_path}")
+        else:
+            issues.append(f"Bin symlink missing: {link_path}")
+
+    # Data links (if any)
+    data_links_ok = True
+    if "data_paths" in app_info:
+        for relative_path in app_info["data_paths"]:
+            home_path = Path.home() / relative_path
+            goinfre_path = DATA_DIR / app_name / relative_path.replace("/", "_").strip(".")
+            if home_path.is_symlink():
+                try:
+                    if home_path.resolve() != goinfre_path.resolve():
+                        data_links_ok = False
+                        issues.append(f"Data symlink wrong: {home_path} (expected -> {goinfre_path})")
+                    elif not goinfre_path.exists():
+                        data_links_ok = False
+                        issues.append(f"Data symlink target missing: {goinfre_path}")
+                except OSError:
+                    data_links_ok = False
+                    issues.append(f"Broken data symlink: {home_path}")
+            elif home_path.exists():
+                data_links_ok = False
+                issues.append(f"Data path is not a symlink (should point to goinfre): {home_path}")
+            else:
+                issues.append(f"Data path missing: {home_path} (goinfre: {goinfre_path})")
+
+    return {
+        "ok": binary_ok and symlink_ok and data_links_ok,
+        "binary_ok": binary_ok,
+        "symlink_ok": symlink_ok,
+        "data_links_ok": data_links_ok,
+        "issues": issues,
+    }
+
+
+def repair_app(app_name):
+    """
+    Re-establish symlinks for an installed app (bin + data_paths).
+    Use after migrating to a new post or when symlinks are broken.
+    """
+    if app_name not in apps.SUPPORTED_APPS:
+        print(f"Unknown app: {app_name}")
+        return False
+    app_info = apps.SUPPORTED_APPS[app_name]
+    app_install_dir = APPS_DIR / app_name
+    if not app_install_dir.exists():
+        print(f"App not installed: {app_name}. Run install first.")
+        return False
+
+    if app_info["type"] == "appimage":
+        binary_path = app_install_dir / "AppRun"
+    else:
+        binary_path = app_install_dir / app_info["bin_path"]
+    if not binary_path.exists():
+        print(f"Binary not found: {binary_path}. Re-install the app.")
+        return False
+
+    # Recreate bin symlink
+    create_symlink(binary_path, app_info["link_name"])
+    print(f"Repaired bin symlink: {app_info['link_name']} -> {binary_path}")
+
+    # Recreate desktop entry
+    create_desktop_entry(app_name, app_info)
+
+    # Re-link data dirs (handles broken symlinks)
+    if "data_paths" in app_info:
+        link_data_dirs(app_name, app_info["data_paths"])
+
+    return True
+
+
+def repair_all_apps():
+    """Repair all installed apps (relink bin + data_paths). Returns (repaired_count, failed_list)."""
+    installed = get_installed_apps()
+    repaired = 0
+    failed = []
+    for app_name in installed:
+        try:
+            if repair_app(app_name):
+                repaired += 1
+        except Exception as e:
+            failed.append((app_name, str(e)))
+    return repaired, failed
