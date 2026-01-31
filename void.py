@@ -391,6 +391,70 @@ def cmd_repair(args):
     print()
 
 
+def cmd_update(args):
+    """Check for updates and optionally apply them."""
+    print("\n" + "="*60)
+    print(" Update Checker")
+    print("="*60 + "\n")
+
+    app_name = getattr(args, "app_name", None)
+    if app_name:
+        targets = [app_name]
+    else:
+        targets = installer.get_installed_apps()
+
+    if not targets:
+        print("No installed apps found.")
+        return
+
+    results = []
+    for name in targets:
+        try:
+            results.append(installer.check_update_for_app(name))
+        except Exception as e:
+            results.append({"app": name, "status": "error", "reason": str(e)})
+
+    updates = [r for r in results if r.get("status") == "update_available"]
+    uptodate = [r for r in results if r.get("status") == "up_to_date"]
+    unknown = [r for r in results if r.get("status") in ("unknown", "not_installed", "error")]
+
+    for r in results:
+        status = r.get("status")
+        if status == "update_available":
+            fields = ", ".join(r.get("changed_fields", [])) or "metadata changed"
+            print(f"  {r['app']}: ✨ update available ({fields})")
+        elif status == "up_to_date":
+            print(f"  {r['app']}: ✓ up to date")
+        elif status == "not_installed":
+            print(f"  {r['app']}: - not installed")
+        elif status == "unknown":
+            print(f"  {r['app']}: ? unknown ({r.get('reason','no metadata')})")
+        else:
+            print(f"  {r['app']}: ✗ error ({r.get('reason','')})")
+
+    print()
+    print(f"Summary: {len(updates)} update(s) available, {len(uptodate)} up-to-date, {len(unknown)} unknown/error.")
+
+    if not args.apply:
+        if updates:
+            print("\nTo apply updates:")
+            print("  ./void.py update --apply")
+        return
+
+    if not updates:
+        print("\nNo updates to apply.")
+        return
+
+    print("\nApplying updates (reinstalling)...")
+    for r in updates:
+        name = r["app"]
+        print(f"\n--- Updating {name} ---")
+        try:
+            installer.update_app(name)
+        except Exception as e:
+            print(f"Failed to update {name}: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Void - 1337 School Storage Manager made by ['abdessel']")
@@ -459,6 +523,14 @@ def main():
     parser_repair.add_argument(
         "app_name", nargs="?", help="Repair specific app (default: all installed)")
 
+    # Update checker
+    parser_update = subparsers.add_parser(
+        "update", help="Check for updates for installed apps")
+    parser_update.add_argument(
+        "app_name", nargs="?", help="Check/update a specific app (default: all installed)")
+    parser_update.add_argument(
+        "--apply", action="store_true", help="Reinstall apps that have updates available")
+
     # Load custom apps
     load_custom_apps()
 
@@ -489,6 +561,8 @@ def main():
         cmd_health(args)
     elif args.command == "repair":
         cmd_repair(args)
+    elif args.command == "update":
+        cmd_update(args)
     else:
         # Default to TUI if no args, or help?
         # User requested tool to be a TUI tool. Defaulting to TUI is nice.

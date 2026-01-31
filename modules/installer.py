@@ -6,6 +6,8 @@ import zipfile
 import subprocess
 from pathlib import Path
 import sys
+import json
+from datetime import datetime, timezone
 from . import apps
 
 # Constants
@@ -16,6 +18,103 @@ APPS_DIR = VOID_ROOT / "void" / "apps"
 DATA_DIR = VOID_ROOT / "void" / "data"  # New location for data syncing
 BIN_DIR = Path.home() / "bin"
 DESKTOP_DIR = Path.home() / ".local" / "share" / "applications"
+
+
+META_FILENAME = ".void_meta.json"
+
+
+def _meta_path_for_app(app_name: str) -> Path:
+    return (APPS_DIR / app_name) / META_FILENAME
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def fetch_url_metadata(url: str):
+    """
+    Fetch remote metadata for update checks: final URL after redirects, ETag,
+    Last-Modified, and Content-Length when available.
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
+        "Accept": "*/*",
+    }
+
+    # HEAD first (cheap). Some servers block HEAD, so fallback to GET range.
+    try:
+        req = urllib.request.Request(url, headers=headers, method="HEAD")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return {
+                "url": url,
+                "resolved_url": resp.geturl(),
+                "etag": resp.headers.get("ETag"),
+                "last_modified": resp.headers.get("Last-Modified"),
+                "content_length": resp.headers.get("Content-Length"),
+            }
+    except Exception:
+        pass
+
+    try:
+        range_headers = dict(headers)
+        range_headers["Range"] = "bytes=0-0"
+        req = urllib.request.Request(url, headers=range_headers, method="GET")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return {
+                "url": url,
+                "resolved_url": resp.geturl(),
+                "etag": resp.headers.get("ETag"),
+                "last_modified": resp.headers.get("Last-Modified"),
+                "content_length": resp.headers.get("Content-Length"),
+            }
+    except Exception:
+        # Best-effort: return minimal info
+        return {"url": url, "resolved_url": url}
+
+
+def _write_app_meta(app_name: str, meta: dict):
+    try:
+        app_dir = APPS_DIR / app_name
+        app_dir.mkdir(parents=True, exist_ok=True)
+        meta_path = _meta_path_for_app(app_name)
+        with open(meta_path, "w") as f:
+            json.dump(meta, f, indent=2, sort_keys=True)
+    except Exception:
+        # Metadata is helpful but not critical
+        pass
+
+
+def _read_app_meta(app_name: str):
+    meta_path = _meta_path_for_app(app_name)
+    if not meta_path.exists():
+        return None
+    try:
+        with open(meta_path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _ensure_app_meta(app_name: str, app_info: dict):
+    """
+    Ensure a basic meta file exists for an installed app. Useful for older
+    installs created before we started writing metadata.
+    """
+    meta = _read_app_meta(app_name)
+    if meta is not None:
+        return
+    _write_app_meta(
+        app_name,
+        {
+            "app_name": app_name,
+            "name": app_info.get("name"),
+            "installed_at": _now_iso(),
+            "source_url": app_info.get("url"),
+            "archive_type": app_info.get("type"),
+            "bin_path": app_info.get("bin_path"),
+            "link_name": app_info.get("link_name"),
+        },
+    )
 
 
 def _remove_home_path_for_relink(home_path):
@@ -158,6 +257,13 @@ def download_file(url, target_path):
         with urllib.request.urlopen(req) as response, open(target_path, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
         print("Download complete.")
+        return {
+            "url": url,
+            "resolved_url": response.geturl(),
+            "etag": response.headers.get("ETag"),
+            "last_modified": response.headers.get("Last-Modified"),
+            "content_length": response.headers.get("Content-Length"),
+        }
     except Exception as e:
         print(f"Error downloading {url}: {e}")
         raise e
@@ -375,7 +481,7 @@ Comment=Managed by Void
         print(f"Warning: Failed to create desktop entry: {e}")
 
 
-def install_app(app_name):
+def install_app(app_name, force=False):
     print(f"\n--- Installing {app_name} ---")
     app_info = apps.SUPPORTED_APPS[app_name]
 
@@ -387,21 +493,28 @@ def install_app(app_name):
         print(
             f"{app_name} seems to be installed at {app_install_dir}. Checking symlink...")
 
-        # Verify binary
-        if app_info["type"] == "appimage":
-            # For extracted AppImages, we always use AppRun
-            binary_path = app_install_dir / "AppRun"
-        else:
-            binary_path = app_install_dir / app_info["bin_path"]
-
-        if binary_path.exists():
-            create_symlink(binary_path, app_info["link_name"])
-            create_desktop_entry(app_name, app_info)
-            print(f"{app_name} is ready.")
-            return
-        else:
-            print(f"Components missing. Re-installing...")
+        if force:
+            print("Force reinstall requested. Removing existing installation...")
             shutil.rmtree(app_install_dir)
+        else:
+        # Verify binary
+            if app_info["type"] == "appimage":
+                # For extracted AppImages, we always use AppRun
+                binary_path = app_install_dir / "AppRun"
+            else:
+                binary_path = app_install_dir / app_info["bin_path"]
+
+            if binary_path.exists():
+                create_symlink(binary_path, app_info["link_name"])
+                create_desktop_entry(app_name, app_info)
+                if "data_paths" in app_info:
+                    link_data_dirs(app_name, app_info["data_paths"])
+                _ensure_app_meta(app_name, app_info)
+                print(f"{app_name} is ready.")
+                return
+            else:
+                print(f"Components missing. Re-installing...")
+                shutil.rmtree(app_install_dir)
 
     # Create installation directory
     APPS_DIR.mkdir(parents=True, exist_ok=True)
@@ -415,7 +528,7 @@ def install_app(app_name):
     temp_download_path = APPS_DIR / f"{app_name}_temp_{filename}"
 
     # 2. Download
-    download_file(app_info["url"], temp_download_path)
+    dl_meta = download_file(app_info["url"], temp_download_path) or {}
 
     # 3. Extract or Move
     try:
@@ -466,6 +579,25 @@ def install_app(app_name):
     # 6. Link Data Directories
     if "data_paths" in app_info:
         link_data_dirs(app_name, app_info["data_paths"])
+
+    # 7. Write install metadata (used for update checks)
+    remote_meta = dl_meta or fetch_url_metadata(app_info["url"])
+    _write_app_meta(
+        app_name,
+        {
+            "app_name": app_name,
+            "name": app_info.get("name"),
+            "installed_at": _now_iso(),
+            "source_url": app_info.get("url"),
+            "archive_type": app_info.get("type"),
+            "bin_path": app_info.get("bin_path"),
+            "link_name": app_info.get("link_name"),
+            "resolved_url": remote_meta.get("resolved_url"),
+            "etag": remote_meta.get("etag"),
+            "last_modified": remote_meta.get("last_modified"),
+            "content_length": remote_meta.get("content_length"),
+        },
+    )
 
     print(f"Successfully installed {app_name}!")
 
@@ -633,3 +765,54 @@ def repair_all_apps():
         except Exception as e:
             failed.append((app_name, str(e)))
     return repaired, failed
+
+
+def check_update_for_app(app_name: str):
+    """
+    Return update status for an installed app.
+    Uses stored ETag/Last-Modified/final redirect URL to detect changes.
+    """
+    if app_name not in apps.SUPPORTED_APPS:
+        return {"app": app_name, "status": "unknown", "reason": "not supported"}
+    app_info = apps.SUPPORTED_APPS[app_name]
+    app_dir = APPS_DIR / app_name
+    if not app_dir.exists():
+        return {"app": app_name, "status": "not_installed"}
+
+    stored = _read_app_meta(app_name) or {}
+    source_url = stored.get("source_url") or app_info.get("url")
+    current = fetch_url_metadata(source_url) or {}
+
+    # If we have no comparison keys, we can't confidently decide
+    keys = ["etag", "last_modified", "resolved_url"]
+    if not any(stored.get(k) for k in keys) and not any(current.get(k) for k in keys):
+        return {"app": app_name, "status": "unknown", "reason": "no metadata"}
+
+    changed = False
+    changed_fields = []
+    for k in keys:
+        s = stored.get(k)
+        c = current.get(k)
+        if s and c and s != c:
+            changed = True
+            changed_fields.append(k)
+
+    if changed:
+        return {
+            "app": app_name,
+            "status": "update_available",
+            "changed_fields": changed_fields,
+            "stored": {k: stored.get(k) for k in keys},
+            "current": {k: current.get(k) for k in keys},
+        }
+
+    return {"app": app_name, "status": "up_to_date"}
+
+
+def update_app(app_name: str):
+    """
+    Reinstall the app (force) to get the latest bits.
+    """
+    if app_name not in apps.SUPPORTED_APPS:
+        raise Exception(f"Unknown app: {app_name}")
+    install_app(app_name, force=True)
