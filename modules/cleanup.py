@@ -83,6 +83,9 @@ CACHE_PATTERNS = [
     (".cache/Code", "IDE Cache", "VSCode cache (alternative)"),
     (".cache/JetBrains", "IDE Cache", "JetBrains IDEs cache"),
     (".cache/sublime-text", "IDE Cache", "Sublime Text cache"),
+    (".config/Code/CachedExtensionVSIXs", "IDE Cache", "VSCode cached extensions"),
+    (".vscode/extensions/.obsolete", "IDE Cache", "Obsolete VSCode extensions"),
+    (".vscode/CachedData", "IDE Cache", "VSCode cached data"),
     
     # System caches
     (".cache/thumbnails", "System Cache", "Thumbnail cache"),
@@ -92,6 +95,10 @@ CACHE_PATTERNS = [
     (".local/share/Trash", "Trash", "Trash/Recycle bin contents"),
     (".tmp", "Temporary", "Temporary files directory"),
     ("tmp", "Temporary", "Temporary files in home"),
+    
+    # Flatpak caches
+    (".var/app/*/cache", "Flatpak Cache", "Flatpak application caches"),
+    (".var/app/*/tmp", "Flatpak Cache", "Flatpak temporary files"),
     
     # Build artifacts and compiled files
     ("__pycache__", "Build Artifacts", "Python bytecode cache"),
@@ -113,10 +120,16 @@ CACHE_PATTERNS = [
     ("Downloads/*.tar.gz", "Downloads", "Old archives"),
     ("Downloads/*.zip", "Downloads", "Old zip files"),
     ("Downloads/*.AppImage", "Downloads", "Old AppImages"),
+    ("Downloads/Unconfirmed*", "Downloads", "Incomplete downloads"),
     
     # Package manager caches
     (".cache/pacman", "Package Cache", "Pacman cache"),
     (".cache/apt", "Package Cache", "APT cache"),
+    
+    # Old backups
+    (".nvim_goinfre_backup/*.tar.gz", "Old Backups", "Old Neovim backups"),
+    ("*.backup", "Old Backups", "Backup files"),
+    ("*~", "Old Backups", "Editor backup files"),
 ]
 
 
@@ -286,3 +299,126 @@ def analyze_home_space() -> Dict:
         'by_category': by_category,
         'usage_percent': (disk_info['used'] / disk_info['total']) * 100 if disk_info['total'] > 0 else 0
     }
+
+
+def find_large_files(home_dir: Path = None, min_size_mb: int = 200, limit: int = 20) -> List[Tuple[Path, int]]:
+    """Find large files in home directory for manual review."""
+    if home_dir is None:
+        home_dir = Path.home()
+    
+    min_size_bytes = min_size_mb * 1024 * 1024
+    large_files = []
+    
+    try:
+        for root, dirs, files in os.walk(home_dir):
+            # Skip certain directories
+            dirs[:] = [d for d in dirs if d not in {'.git', 'node_modules', '.cache', 'goinfre'}]
+            
+            for file in files:
+                try:
+                    file_path = Path(root) / file
+                    if file_path.is_file():
+                        size = file_path.stat().st_size
+                        if size >= min_size_bytes:
+                            large_files.append((file_path, size))
+                except (OSError, PermissionError):
+                    continue
+    except Exception:
+        pass
+    
+    # Sort by size (largest first) and limit
+    large_files.sort(key=lambda x: x[1], reverse=True)
+    return large_files[:limit]
+
+
+def find_old_downloads(home_dir: Path = None, days_old: int = 90) -> List[Tuple[Path, int, int]]:
+    """Find old files in Downloads directory."""
+    if home_dir is None:
+        home_dir = Path.home()
+    
+    downloads_dir = home_dir / "Downloads"
+    if not downloads_dir.exists():
+        return []
+    
+    import time
+    cutoff_time = time.time() - (days_old * 24 * 60 * 60)
+    old_files = []
+    
+    try:
+        for item in downloads_dir.iterdir():
+            if item.is_file():
+                mtime = item.stat().st_mtime
+                if mtime < cutoff_time:
+                    size = item.stat().st_size
+                    age_days = int((time.time() - mtime) / (24 * 60 * 60))
+                    old_files.append((item, size, age_days))
+    except (OSError, PermissionError):
+        pass
+    
+    # Sort by age (oldest first)
+    old_files.sort(key=lambda x: x[2], reverse=True)
+    return old_files
+
+
+def clean_flatpak_cache(home_dir: Path = None, dry_run: bool = False) -> int:
+    """Clean flatpak application caches."""
+    if home_dir is None:
+        home_dir = Path.home()
+    
+    flatpak_dir = home_dir / ".var" / "app"
+    if not flatpak_dir.exists():
+        return 0
+    
+    total_freed = 0
+    
+    try:
+        for app_dir in flatpak_dir.iterdir():
+            if app_dir.is_dir():
+                # Clean cache directories
+                cache_dir = app_dir / "cache"
+                if cache_dir.exists():
+                    size = get_directory_size(cache_dir)
+                    if not dry_run:
+                        shutil.rmtree(cache_dir, ignore_errors=True)
+                        cache_dir.mkdir(exist_ok=True)
+                    total_freed += size
+                
+                # Clean tmp directories
+                tmp_dir = app_dir / "tmp"
+                if tmp_dir.exists():
+                    size = get_directory_size(tmp_dir)
+                    if not dry_run:
+                        shutil.rmtree(tmp_dir, ignore_errors=True)
+                        tmp_dir.mkdir(exist_ok=True)
+                    total_freed += size
+    except (OSError, PermissionError):
+        pass
+    
+    return total_freed
+
+
+def clean_vscode_deep(home_dir: Path = None, dry_run: bool = False) -> int:
+    """Deep clean VSCode caches and obsolete extensions."""
+    if home_dir is None:
+        home_dir = Path.home()
+    
+    total_freed = 0
+    
+    vscode_paths = [
+        home_dir / ".config" / "Code" / "CachedExtensionVSIXs",
+        home_dir / ".vscode" / "extensions" / ".obsolete",
+        home_dir / ".vscode" / "CachedData",
+    ]
+    
+    for path in vscode_paths:
+        if path.exists():
+            size = get_directory_size(path)
+            if not dry_run:
+                if path.is_dir():
+                    shutil.rmtree(path, ignore_errors=True)
+                    path.mkdir(exist_ok=True)
+                else:
+                    path.unlink()
+            total_freed += size
+    
+    return total_freed

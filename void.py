@@ -188,9 +188,42 @@ def cmd_cleanup_analyze(args):
             if len(items) > 5:
                 print(f"    ... and {len(items) - 5} more")
         print()
-        print("Run 'void cleanup --execute' to clean these files.")
     else:
-        print("No cleanup opportunities found. Your home directory is clean!")
+        print("No standard cleanup items found.")
+    
+    # Show large files
+    print("\n" + "-"*60)
+    print(" Large Files (>200MB) for Manual Review")
+    print("-"*60)
+    large_files = cleanup.find_large_files(min_size_mb=200, limit=10)
+    if large_files:
+        for file_path, size in large_files:
+            try:
+                rel_path = file_path.relative_to(Path.home())
+            except ValueError:
+                rel_path = file_path
+            print(f"  {cleanup.format_size(size):>10} - {rel_path}")
+    else:
+        print("  No large files found.")
+    
+    # Show old downloads
+    print("\n" + "-"*60)
+    print(" Old Downloads (>90 days)")
+    print("-"*60)
+    old_downloads = cleanup.find_old_downloads(days_old=90)
+    if old_downloads:
+        total_old_size = sum(size for _, size, _ in old_downloads)
+        print(f"  Found {len(old_downloads)} old files ({cleanup.format_size(total_old_size)})")
+        for file_path, size, age in old_downloads[:10]:
+            print(f"  {cleanup.format_size(size):>10} ({age:>3} days) - {file_path.name}")
+        if len(old_downloads) > 10:
+            print(f"  ... and {len(old_downloads) - 10} more")
+    else:
+        print("  No old downloads found.")
+    
+    print()
+    if analysis['cleanup_items']:
+        print("Run 'void cleanup --execute' to clean these files.")
     print()
 
 
@@ -210,6 +243,13 @@ def cmd_cleanup_execute(args):
     print(f"Total size: {cleanup.format_size(analysis['total_cleanable'])}")
     print()
     
+    # Show what will be cleaned
+    print("Categories to clean:")
+    for category, items in analysis['by_category'].items():
+        cat_size = sum(item.size for item in items)
+        print(f"  • {category}: {len(items)} items ({cleanup.format_size(cat_size)})")
+    print()
+    
     if not args.yes:
         response = input("Do you want to proceed? (yes/no): ").strip().lower()
         if response not in ['yes', 'y']:
@@ -217,16 +257,35 @@ def cmd_cleanup_execute(args):
             return
     
     print("\nCleaning up...")
-    items_cleaned, bytes_freed = cleanup.cleanup_items(analysis['cleanup_items'], dry_run=False)
     
-    print(f"\n✓ Cleaned {items_cleaned} items")
-    print(f"✓ Freed {cleanup.format_size(bytes_freed)}")
+    # Standard cleanup
+    items_cleaned, bytes_freed = cleanup.cleanup_items(analysis['cleanup_items'], dry_run=False)
+    print(f"[1/3] Standard cleanup: {items_cleaned} items, {cleanup.format_size(bytes_freed)} freed")
+    
+    # Deep VSCode cleanup
+    vscode_freed = cleanup.clean_vscode_deep(dry_run=False)
+    if vscode_freed > 0:
+        print(f"[2/3] VSCode deep clean: {cleanup.format_size(vscode_freed)} freed")
+        bytes_freed += vscode_freed
+    else:
+        print(f"[2/3] VSCode deep clean: already clean")
+    
+    # Flatpak cleanup
+    flatpak_freed = cleanup.clean_flatpak_cache(dry_run=False)
+    if flatpak_freed > 0:
+        print(f"[3/3] Flatpak cache clean: {cleanup.format_size(flatpak_freed)} freed")
+        bytes_freed += flatpak_freed
+    else:
+        print(f"[3/3] Flatpak cache clean: already clean")
+    
+    print(f"\n✓ Total freed: {cleanup.format_size(bytes_freed)}")
     
     # Show updated disk usage
     disk_info = cleanup.get_disk_usage()
     print(f"\nUpdated disk usage:")
     print(f"  Free: {cleanup.format_size(disk_info['free'])}")
     print()
+
 
 
 def cmd_inspect(args):
