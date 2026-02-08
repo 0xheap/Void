@@ -539,6 +539,113 @@ def cmd_update(args):
             print(f"Failed to update {name}: {e}")
 
 
+def cmd_check_updates(args):
+    """Check for updates for installed apps."""
+    print("\n" + "="*60)
+    print(" Checking for Updates")
+    print("="*60 + "\n")
+    
+    installed = installer.get_installed_apps()
+    
+    if not installed:
+        print("No installed apps found.")
+        return
+    
+    updates_available = []
+    up_to_date = []
+    errors = []
+    
+    for app in installed:
+        app_name = app['app_name']
+        print(f"Checking {app['name']}...", end=" ")
+        
+        result = installer.check_app_update(app_name)
+        
+        if result['status'] == 'update_available':
+            print(f"✓ Update available ({result['message']})")
+            updates_available.append((app_name, app['name'], result))
+        elif result['status'] == 'up_to_date':
+            print("✓ Up to date")
+            up_to_date.append(app_name)
+        else:
+            print(f"✗ {result['message']}")
+            errors.append((app_name, result['message']))
+    
+    print("\n" + "="*60)
+    print(f"Summary: {len(updates_available)} updates, {len(up_to_date)} up-to-date, {len(errors)} errors")
+    
+    if updates_available:
+        print("\nUpdates available:")
+        for app_name, name, result in updates_available:
+            print(f"  • {name} ({app_name})")
+        print(f"\nRun './void.py install <app_name>' to update")
+    
+    print()
+
+
+def cmd_info(args):
+    """Show detailed information about an app."""
+    app_name = args.app_name
+    
+    print("\n" + "="*60)
+    print(f" App Information: {app_name}")
+    print("="*60 + "\n")
+    
+    info = installer.get_app_info(app_name)
+    
+    if not info:
+        print(f"Error: Unknown app '{app_name}'")
+        return
+    
+    if not info['installed']:
+        print(f"Status: Not installed")
+        print(f"Name: {info['app_info'].get('name')}")
+        print(f"URL: {info['app_info'].get('url')}")
+        print(f"Type: {info['app_info'].get('type')}")
+        return
+    
+    # Format size
+    size_mb = info['size'] / (1024 * 1024)
+    
+    print(f"Name: {info['name']}")
+    print(f"Status: Installed")
+    print(f"Size: {size_mb:.2f} MB")
+    print(f"Install Directory: {info['install_dir']}")
+    print(f"Binary: {info['binary_path']}")
+    print(f"  Exists: {'✓' if info['binary_exists'] else '✗'}")
+    print(f"Symlink: {info['link_path']}")
+    print(f"  Exists: {'✓' if info['link_exists'] else '✗'}")
+    
+    if info['installed_at']:
+        from datetime import datetime
+        try:
+            dt = datetime.fromisoformat(info['installed_at'])
+            print(f"Installed: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+        except:
+            print(f"Installed: {info['installed_at']}")
+    
+    print(f"Type: {info['type']}")
+    print(f"Source URL: {info['source_url']}")
+    
+    if info['data_paths']:
+        print(f"\nData Paths:")
+        for data in info['data_paths']:
+            status = "✓ symlinked" if data['is_symlink'] else ("✓ exists" if data['exists'] else "✗ missing")
+            print(f"  • {data['path']}: {status}")
+    
+    # Check for updates
+    print(f"\nChecking for updates...", end=" ")
+    update_result = installer.check_app_update(app_name)
+    if update_result['status'] == 'update_available':
+        print(f"✓ Update available ({update_result['message']})")
+    elif update_result['status'] == 'up_to_date':
+        print("✓ Up to date")
+    else:
+        print(f"✗ {update_result['message']}")
+    
+    print()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Void - 1337 School Storage Manager made by ['abdessel']")
@@ -614,6 +721,16 @@ def main():
         "app_name", nargs="?", help="Check/update a specific app (default: all installed)")
     parser_update.add_argument(
         "--apply", action="store_true", help="Reinstall apps that have updates available")
+    
+    # Check updates (simpler version)
+    subparsers.add_parser(
+        "check-updates", help="Check for updates for all installed apps")
+    
+    # App info
+    parser_info = subparsers.add_parser(
+        "info", help="Show detailed information about an app")
+    parser_info.add_argument(
+        "app_name", help="Name of the application")
 
     # Load custom apps
     load_custom_apps()
@@ -641,6 +758,16 @@ def main():
             cmd_cleanup_analyze(args)
     elif args.command == "inspect":
         cmd_inspect(args)
+    elif args.command == "health":
+        cmd_health(args)
+    elif args.command == "repair":
+        cmd_repair(args)
+    elif args.command == "update":
+        cmd_update(args)
+    elif args.command == "check-updates":
+        cmd_check_updates(args)
+    elif args.command == "info":
+        cmd_info(args)
     elif args.command == "health":
         cmd_health(args)
     elif args.command == "repair":

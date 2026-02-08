@@ -117,6 +117,146 @@ def _ensure_app_meta(app_name: str, app_info: dict):
     )
 
 
+def get_installed_apps():
+    """Get list of installed apps with metadata."""
+    installed = []
+    
+    if not APPS_DIR.exists():
+        return installed
+    
+    for app_dir in APPS_DIR.iterdir():
+        if app_dir.is_dir() and app_dir.name in apps.SUPPORTED_APPS:
+            meta = _read_app_meta(app_dir.name)
+            app_info = apps.SUPPORTED_APPS[app_dir.name]
+            
+            # Get size
+            size = sum(f.stat().st_size for f in app_dir.rglob('*') if f.is_file())
+            
+            installed.append({
+                'app_name': app_dir.name,
+                'name': app_info.get('name'),
+                'size': size,
+                'installed_at': meta.get('installed_at') if meta else None,
+                'meta': meta,
+                'app_info': app_info
+            })
+    
+    return installed
+
+
+def check_app_update(app_name: str):
+    """Check if an app has an update available."""
+    if app_name not in apps.SUPPORTED_APPS:
+        return None
+    
+    app_info = apps.SUPPORTED_APPS[app_name]
+    meta = _read_app_meta(app_name)
+    
+    if not meta:
+        return {'status': 'no_metadata', 'message': 'No metadata found'}
+    
+    # Fetch current remote metadata
+    try:
+        remote_meta = fetch_url_metadata(app_info['url'])
+    except Exception as e:
+        return {'status': 'error', 'message': f'Failed to check: {e}'}
+    
+    # Compare metadata
+    update_available = False
+    reason = []
+    
+    if meta.get('etag') and remote_meta.get('etag'):
+        if meta['etag'] != remote_meta['etag']:
+            update_available = True
+            reason.append('ETag changed')
+    
+    if meta.get('last_modified') and remote_meta.get('last_modified'):
+        if meta['last_modified'] != remote_meta['last_modified']:
+            update_available = True
+            reason.append('Last-Modified changed')
+    
+    if meta.get('content_length') and remote_meta.get('content_length'):
+        if meta['content_length'] != remote_meta['content_length']:
+            update_available = True
+            reason.append('Size changed')
+    
+    if update_available:
+        return {
+            'status': 'update_available',
+            'message': ', '.join(reason),
+            'remote_meta': remote_meta
+        }
+    else:
+        return {
+            'status': 'up_to_date',
+            'message': 'No update detected'
+        }
+
+
+def get_app_info(app_name: str):
+    """Get detailed information about an installed app."""
+    if app_name not in apps.SUPPORTED_APPS:
+        return None
+    
+    app_info = apps.SUPPORTED_APPS[app_name]
+    app_dir = APPS_DIR / app_name
+    
+    if not app_dir.exists():
+        return {'installed': False, 'app_info': app_info}
+    
+    meta = _read_app_meta(app_name)
+    
+    # Calculate size
+    size = sum(f.stat().st_size for f in app_dir.rglob('*') if f.is_file())
+    
+    # Check binary
+    if app_info['type'] == 'appimage':
+        binary_path = app_dir / "AppRun"
+    else:
+        binary_path = app_dir / app_info['bin_path']
+    
+    binary_exists = binary_path.exists()
+    
+    # Check symlink
+    link_path = BIN_DIR / app_info['link_name']
+    link_exists = link_path.exists() or link_path.is_symlink()
+    
+    # Check data paths
+    data_status = []
+    if 'data_paths' in app_info:
+        for data_path in app_info['data_paths']:
+            home_path = Path.home() / data_path
+            data_dir = DATA_DIR / app_name / data_path
+            
+            is_symlink = home_path.is_symlink()
+            exists = home_path.exists() or home_path.is_symlink()
+            
+            data_status.append({
+                'path': data_path,
+                'exists': exists,
+                'is_symlink': is_symlink,
+                'target': data_dir if is_symlink else None
+            })
+    
+    return {
+        'installed': True,
+        'app_name': app_name,
+        'name': app_info.get('name'),
+        'size': size,
+        'install_dir': str(app_dir),
+        'binary_path': str(binary_path),
+        'binary_exists': binary_exists,
+        'link_path': str(link_path),
+        'link_exists': link_exists,
+        'installed_at': meta.get('installed_at') if meta else None,
+        'source_url': app_info.get('url'),
+        'type': app_info.get('type'),
+        'data_paths': data_status,
+        'meta': meta,
+        'app_info': app_info
+    }
+
+
 def _remove_home_path_for_relink(home_path):
     """
     Remove home_path so we can create a new symlink.
