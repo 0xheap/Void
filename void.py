@@ -464,7 +464,7 @@ def cmd_health(args):
             print(f"Error: Unknown app '{app_name}'.")
             return
     else:
-        apps_to_check = installer.get_installed_apps()
+        apps_to_check = installer.get_installed_app_names()
     if not apps_to_check:
         print("No installed apps found.")
         return
@@ -494,7 +494,7 @@ def cmd_repair(args):
             print(f"Error: Unknown app '{app_name}'.")
             return
     else:
-        apps_to_repair = installer.get_installed_apps()
+        apps_to_repair = installer.get_installed_app_names()
     if not apps_to_repair:
         print("No installed apps to repair.")
         return
@@ -523,7 +523,7 @@ def cmd_update(args):
     if app_name:
         targets = [app_name]
     else:
-        targets = installer.get_installed_apps()
+        targets = installer.get_installed_app_names()
 
     if not targets:
         print("No installed apps found.")

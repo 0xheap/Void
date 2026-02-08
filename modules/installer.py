@@ -822,7 +822,7 @@ def uninstall_app(app_name):
     print(f"Successfully uninstalled {app_name}")
 
 
-def get_installed_apps():
+def get_installed_app_names():
     """Return list of app names that have an installation directory in APPS_DIR."""
     if not APPS_DIR.exists():
         return []
@@ -937,7 +937,7 @@ def repair_app(app_name):
 
 def repair_all_apps():
     """Repair all installed apps (relink bin + data_paths). Returns (repaired_count, failed_list)."""
-    installed = get_installed_apps()
+    installed = get_installed_app_names()
     repaired = 0
     failed = []
     for app_name in installed:
