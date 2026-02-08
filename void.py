@@ -108,6 +108,44 @@ def cmd_install(args):
         print("Use 'void list' to see available apps.")
         sys.exit(1)
 
+    dry_run = getattr(args, 'dry_run', False)
+    
+    if dry_run:
+        print(f"\n{'='*60}")
+        print(f" DRY RUN: Installing {app_name}")
+        print(f"{'='*60}\n")
+        
+        app_info = apps.SUPPORTED_APPS[app_name]
+        app_install_dir = Path(f"/goinfre/{os.environ.get('USER', 'unknown')}/void/apps/{app_name}")
+        
+        print(f"App: {app_info['name']}")
+        print(f"Type: {app_info['type']}")
+        print(f"\nWould perform these actions:")
+        print(f"  1. Download from: {app_info['url']}")
+        print(f"  2. Extract to: {app_install_dir}")
+        
+        if app_info['type'] == 'appimage':
+            binary_path = app_install_dir / "AppRun"
+        else:
+            binary_path = app_install_dir / app_info['bin_path']
+        
+        print(f"  3. Binary location: {binary_path}")
+        print(f"  4. Create symlink: ~/bin/{app_info['link_name']} -> {binary_path}")
+        
+        if 'data_paths' in app_info:
+            print(f"  5. Link data directories:")
+            for data_path in app_info['data_paths']:
+                print(f"     - ~/{data_path} -> /goinfre/$USER/void/data/{app_name}/{data_path}")
+        
+        if 'post_install' in app_info:
+            print(f"  6. Run post-install scripts:")
+            for idx, script in enumerate(app_info['post_install'], 1):
+                print(f"     [{idx}] {script}")
+        
+        print(f"\n✓ Dry run complete. No changes made.")
+        print(f"Run without --dry-run to actually install.\n")
+        return
+    
     installer.install_app(app_name)
 
 
@@ -646,6 +684,111 @@ def cmd_info(args):
     print()
 
 
+def cmd_reinstall(args):
+    """Reinstall an application."""
+    app_name = args.app_name
+    
+    if app_name not in apps.SUPPORTED_APPS:
+        print(f"Error: Unknown app '{app_name}'")
+        return
+    
+    print(f"\n{'='*60}")
+    print(f" Reinstalling {app_name}")
+    print(f"{'='*60}\n")
+    
+    # Check if installed
+    app_dir = Path(f"/goinfre/{os.environ.get('USER', 'unknown')}/void/apps/{app_name}")
+    
+    if app_dir.exists():
+        print(f"Uninstalling {app_name}...")
+        installer.uninstall_app(app_name)
+    else:
+        print(f"{app_name} not currently installed")
+    
+    print(f"\nInstalling {app_name}...")
+    installer.install_app(app_name)
+
+
+def cmd_export(args):
+    """Export list of installed apps."""
+    installed = installer.get_installed_apps()
+    
+    if not installed:
+        print("No installed apps found.")
+        return
+    
+    export_data = {
+        'version': '1.0',
+        'exported_at': installer._now_iso(),
+        'apps': [app['app_name'] for app in installed]
+    }
+    
+    import json
+    print(json.dumps(export_data, indent=2))
+
+
+def cmd_import(args):
+    """Import and install apps from exported list."""
+    import json
+    
+    file_path = args.file
+    
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: File not found: {file_path}")
+        return
+    except json.JSONDecodeError:
+        print(f"Error: Invalid JSON file")
+        return
+    
+    if 'apps' not in data:
+        print("Error: Invalid export file (missing 'apps' field)")
+        return
+    
+    apps_to_install = data['apps']
+    
+    print(f"\n{'='*60}")
+    print(f" Importing {len(apps_to_install)} apps")
+    print(f"{'='*60}\n")
+    
+    for app_name in apps_to_install:
+        print(f"  • {app_name}")
+    
+    print()
+    
+    if not args.yes:
+        response = input("Install these apps? (yes/no): ").strip().lower()
+        if response not in ['yes', 'y']:
+            print("Import cancelled.")
+            return
+    
+    print()
+    success = 0
+    failed = []
+    
+    for app_name in apps_to_install:
+        if app_name not in apps.SUPPORTED_APPS:
+            print(f"✗ {app_name}: Unknown app")
+            failed.append(app_name)
+            continue
+        
+        try:
+            print(f"\nInstalling {app_name}...")
+            installer.install_app(app_name)
+            success += 1
+        except Exception as e:
+            print(f"✗ Failed: {e}")
+            failed.append(app_name)
+    
+    print(f"\n{'='*60}")
+    print(f"Import complete: {success} installed, {len(failed)} failed")
+    if failed:
+        print(f"Failed: {', '.join(failed)}")
+    print(f"{'='*60}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Void - 1337 School Storage Manager made by ['abdessel']")
@@ -662,6 +805,8 @@ def main():
         "install", help="Install a specific application")
     parser_install.add_argument(
         "app_name", help="Name of the application to install")
+    parser_install.add_argument(
+        "--dry-run", action="store_true", help="Show what would be done without actually doing it")
 
     # Uninstall
     parser_uninstall = subparsers.add_parser(
@@ -731,6 +876,24 @@ def main():
         "info", help="Show detailed information about an app")
     parser_info.add_argument(
         "app_name", help="Name of the application")
+    
+    # Reinstall
+    parser_reinstall = subparsers.add_parser(
+        "reinstall", help="Reinstall an application (uninstall + install)")
+    parser_reinstall.add_argument(
+        "app_name", help="Name of the application to reinstall")
+    
+    # Export
+    subparsers.add_parser(
+        "export", help="Export list of installed apps to JSON")
+    
+    # Import
+    parser_import = subparsers.add_parser(
+        "import", help="Import and install apps from exported JSON")
+    parser_import.add_argument(
+        "file", help="Path to exported JSON file")
+    parser_import.add_argument(
+        "-y", "--yes", action="store_true", help="Skip confirmation prompt")
 
     # Load custom apps
     load_custom_apps()
@@ -768,6 +931,12 @@ def main():
         cmd_check_updates(args)
     elif args.command == "info":
         cmd_info(args)
+    elif args.command == "reinstall":
+        cmd_reinstall(args)
+    elif args.command == "export":
+        cmd_export(args)
+    elif args.command == "import":
+        cmd_import(args)
     elif args.command == "health":
         cmd_health(args)
     elif args.command == "repair":
