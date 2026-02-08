@@ -1,0 +1,61 @@
+{
+    "example-cli-tool": {
+        "name": "Example CLI Tool",
+        "url": "https://example.com/tool.tar.gz",
+        "type": "tar.gz",
+        "bin_path": "tool/bin/tool",
+        "link_name": "tool",
+        "post_install": [
+            "{link} --version",
+            "echo 'Tool installed successfully!'"
+        ]
+    },
+    
+    "example-ide": {
+        "name": "Example IDE",
+        "url": "https://example.com/ide.tar.gz",
+        "type": "tar.gz",
+        "bin_path": "ide/bin/ide",
+        "link_name": "ide",
+        "data_paths": [
+            ".config/ide",
+            ".cache/ide"
+        ],
+        "post_install": [
+            "{link} --install-plugin python-support",
+            "{link} --install-plugin git-integration",
+            "{link} --set-theme dark",
+            "mkdir -p ~/.config/ide/snippets",
+            "echo 'IDE configured with plugins and dark theme'"
+        ]
+    },
+    
+    "example-with-config": {
+        "name": "Example App with Config",
+        "url": "https://example.com/app.tar.gz",
+        "type": "tar.gz",
+        "bin_path": "app/app",
+        "link_name": "app",
+        "post_install": [
+            "mkdir -p ~/.config/app",
+            "cat > ~/.config/app/config.json << 'EOF'\n{\n  \"theme\": \"dark\",\n  \"auto_save\": true\n}\nEOF",
+            "{link} --validate-config",
+            "echo 'Configuration file created'"
+        ]
+    },
+    
+    "example-download-resources": {
+        "name": "Example with Resource Download",
+        "url": "https://example.com/app.tar.gz",
+        "type": "tar.gz",
+        "bin_path": "app/bin/app",
+        "link_name": "app",
+        "post_install": [
+            "mkdir -p ~/.local/share/app/resources",
+            "curl -sL https://example.com/resources.zip -o /tmp/resources.zip",
+            "unzip -q /tmp/resources.zip -d ~/.local/share/app/resources",
+            "rm /tmp/resources.zip",
+            "echo 'Downloaded additional resources'"
+        ]
+    }
+}

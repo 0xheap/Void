@@ -604,6 +604,15 @@ myapp-2.0/
 - Paths are relative to home directory (start with `.`)
 - Example: `[".config/Code", ".vscode"]`
 
+**`post_install`** (array of strings, optional)
+- Shell commands to run after successful installation
+- Useful for installing extensions, configuring settings, or downloading additional resources
+- Commands are executed in order, with 5-minute timeout per command
+- Available placeholders:
+  - `{bin}` - Full path to the installed binary
+  - `{link}` - Full path to the symlink in ~/bin
+- Example: `["{link} --install-extension ms-python.python", "echo 'Setup complete'"]`
+
 **When to use `data_paths`:**
 - Apps with large extension directories (IDEs)
 - Apps with extensive cache (browsers, editors)
@@ -716,6 +725,43 @@ app-release/
 }
 ```
 
+#### Example 5: IDE with Extensions (Post-Install Scripts)
+
+**App:** VSCode with automatic extension installation
+
+**Configuration:**
+```json
+{
+    "vscode": {
+        "name": "Visual Studio Code",
+        "url": "https://code.visualstudio.com/sha/download?build=stable&os=linux-x64",
+        "type": "tar.gz",
+        "bin_path": "VSCode-linux-x64/bin/code",
+        "link_name": "code",
+        "data_paths": [
+            ".vscode/extensions",
+            ".config/Code"
+        ],
+        "post_install": [
+            "{link} --install-extension ms-python.python",
+            "{link} --install-extension dbaeumer.vscode-eslint",
+            "{link} --install-extension esbenp.prettier-vscode",
+            "echo 'VSCode configured with Python, ESLint, and Prettier'"
+        ]
+    }
+}
+```
+
+**What happens:**
+1. VSCode is installed to `/goinfre`
+2. Binary is symlinked to `~/bin/code`
+3. Extensions directory moved to `/goinfre` and symlinked
+4. Post-install scripts run automatically:
+   - Installs Python extension
+   - Installs ESLint extension
+   - Installs Prettier extension
+   - Prints confirmation message
+
 ### Troubleshooting Custom Apps
 
 #### Problem: App doesn't appear in list
@@ -732,6 +778,15 @@ app-release/
 2. Check if archive structure changed (version update)
 3. Verify `bin_path` is relative (no leading slash)
 4. Ensure `bin_path` points to a file, not a directory
+
+#### Problem: Post-install script fails
+
+**Solutions:**
+1. Check script syntax and commands are valid
+2. Verify placeholders `{bin}` and `{link}` are used correctly
+3. Test command manually: `~/bin/<link_name> <command>`
+4. Check script output in installation logs
+5. Ensure script doesn't require user interaction (use non-interactive flags)
 
 #### Problem: App installs but command doesn't work
 

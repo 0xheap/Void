@@ -481,6 +481,44 @@ Comment=Managed by Void
         print(f"Warning: Failed to create desktop entry: {e}")
 
 
+def run_post_install_scripts(app_name, scripts, binary_path):
+    """
+    Execute post-install scripts for an application.
+    Scripts can use {bin} placeholder for the binary path.
+    """
+    print(f"\n--- Running post-install scripts for {app_name} ---")
+    
+    for idx, script in enumerate(scripts, 1):
+        # Replace placeholders
+        script = script.replace("{bin}", str(binary_path))
+        script = script.replace("{link}", str(BIN_DIR / apps.SUPPORTED_APPS[app_name]["link_name"]))
+        
+        print(f"[{idx}/{len(scripts)}] Executing: {script}")
+        
+        try:
+            result = subprocess.run(
+                script,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+            
+            if result.returncode == 0:
+                print(f"  ✓ Success")
+                if result.stdout.strip():
+                    print(f"  Output: {result.stdout.strip()}")
+            else:
+                print(f"  ✗ Failed (exit code {result.returncode})")
+                if result.stderr.strip():
+                    print(f"  Error: {result.stderr.strip()}")
+                    
+        except subprocess.TimeoutExpired:
+            print(f"  ✗ Timeout (exceeded 5 minutes)")
+        except Exception as e:
+            print(f"  ✗ Error: {e}")
+
+
 def install_app(app_name, force=False):
     print(f"\n--- Installing {app_name} ---")
     app_info = apps.SUPPORTED_APPS[app_name]
@@ -598,6 +636,10 @@ def install_app(app_name, force=False):
             "content_length": remote_meta.get("content_length"),
         },
     )
+
+    # 8. Run post-install scripts
+    if "post_install" in app_info:
+        run_post_install_scripts(app_name, app_info["post_install"], binary_path)
 
     print(f"Successfully installed {app_name}!")
 

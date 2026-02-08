@@ -11,6 +11,10 @@ SUPPORTED_APPS = {
         "data_paths": [
             ".vscode/extensions",  # Extensions (keep ~/.vscode as a real dir)
             ".config/Code"     # Cache & Config
+        ],
+        "post_install": [
+            "{link} --install-extension ms-python.python",
+            "{link} --install-extension dbaeumer.vscode-eslint"
         ]
     },
     "vscodium": {
