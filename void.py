@@ -258,32 +258,57 @@ def cmd_cleanup_execute(args):
     
     print("\nCleaning up...")
     
-    # Standard cleanup
-    items_cleaned, bytes_freed = cleanup.cleanup_items(analysis['cleanup_items'], dry_run=False)
-    print(f"[1/3] Standard cleanup: {items_cleaned} items, {cleanup.format_size(bytes_freed)} freed")
+    # Get initial disk usage
+    initial_disk = cleanup.get_disk_usage()
+    total_freed = 0
     
-    # Deep VSCode cleanup
+    # 1. Clear entire .cache directory
+    cache_freed = cleanup.clean_cache_directory(dry_run=False)
+    if cache_freed > 0:
+        print(f"[1/5] Cache directory: {cleanup.format_size(cache_freed)} freed")
+        total_freed += cache_freed
+    else:
+        print(f"[1/5] Cache directory: already clean")
+    
+    # 2. Empty trash
+    trash_freed = cleanup.clean_trash(dry_run=False)
+    if trash_freed > 0:
+        print(f"[2/5] Trash: {cleanup.format_size(trash_freed)} freed")
+        total_freed += trash_freed
+    else:
+        print(f"[2/5] Trash: already clean")
+    
+    # 3. Deep VSCode cleanup
     vscode_freed = cleanup.clean_vscode_deep(dry_run=False)
     if vscode_freed > 0:
-        print(f"[2/3] VSCode deep clean: {cleanup.format_size(vscode_freed)} freed")
-        bytes_freed += vscode_freed
+        print(f"[3/5] VSCode deep clean: {cleanup.format_size(vscode_freed)} freed")
+        total_freed += vscode_freed
     else:
-        print(f"[2/3] VSCode deep clean: already clean")
+        print(f"[3/5] VSCode deep clean: already clean")
     
-    # Flatpak cleanup
+    # 4. Flatpak cleanup
     flatpak_freed = cleanup.clean_flatpak_cache(dry_run=False)
     if flatpak_freed > 0:
-        print(f"[3/3] Flatpak cache clean: {cleanup.format_size(flatpak_freed)} freed")
-        bytes_freed += flatpak_freed
+        print(f"[4/5] Flatpak cache: {cleanup.format_size(flatpak_freed)} freed")
+        total_freed += flatpak_freed
     else:
-        print(f"[3/3] Flatpak cache clean: already clean")
+        print(f"[4/5] Flatpak cache: already clean")
     
-    print(f"\n✓ Total freed: {cleanup.format_size(bytes_freed)}")
+    # 5. Standard cleanup (build artifacts, etc.)
+    items_cleaned, other_freed = cleanup.cleanup_items(analysis['cleanup_items'], dry_run=False)
+    if other_freed > 0:
+        print(f"[5/5] Build artifacts: {items_cleaned} items, {cleanup.format_size(other_freed)} freed")
+        total_freed += other_freed
+    else:
+        print(f"[5/5] Build artifacts: already clean")
+    
+    print(f"\n✓ Total freed: {cleanup.format_size(total_freed)}")
     
     # Show updated disk usage
-    disk_info = cleanup.get_disk_usage()
-    print(f"\nUpdated disk usage:")
-    print(f"  Free: {cleanup.format_size(disk_info['free'])}")
+    final_disk = cleanup.get_disk_usage()
+    print(f"\nDisk usage:")
+    print(f"  Before: {cleanup.format_size(initial_disk['free'])} free")
+    print(f"  After:  {cleanup.format_size(final_disk['free'])} free")
     print()
 
 

@@ -397,6 +397,61 @@ def clean_flatpak_cache(home_dir: Path = None, dry_run: bool = False) -> int:
     return total_freed
 
 
+def clean_cache_directory(home_dir: Path = None, dry_run: bool = False) -> int:
+    """Clear entire .cache directory contents."""
+    if home_dir is None:
+        home_dir = Path.home()
+    
+    cache_dir = home_dir / ".cache"
+    if not cache_dir.exists():
+        return 0
+    
+    total_freed = get_directory_size(cache_dir)
+    
+    if not dry_run:
+        try:
+            # Remove all contents but keep the directory
+            for item in cache_dir.iterdir():
+                try:
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                except (OSError, PermissionError):
+                    continue
+        except (OSError, PermissionError):
+            pass
+    
+    return total_freed
+
+
+def clean_trash(home_dir: Path = None, dry_run: bool = False) -> int:
+    """Empty trash directory."""
+    if home_dir is None:
+        home_dir = Path.home()
+    
+    trash_dir = home_dir / ".local" / "share" / "Trash"
+    if not trash_dir.exists():
+        return 0
+    
+    total_freed = get_directory_size(trash_dir)
+    
+    if not dry_run:
+        try:
+            for item in trash_dir.iterdir():
+                try:
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                except (OSError, PermissionError):
+                    continue
+        except (OSError, PermissionError):
+            pass
+    
+    return total_freed
+
+
 def clean_vscode_deep(home_dir: Path = None, dry_run: bool = False) -> int:
     """Deep clean VSCode caches and obsolete extensions."""
     if home_dir is None:
@@ -404,21 +459,42 @@ def clean_vscode_deep(home_dir: Path = None, dry_run: bool = False) -> int:
     
     total_freed = 0
     
-    vscode_paths = [
-        home_dir / ".config" / "Code" / "CachedExtensionVSIXs",
-        home_dir / ".vscode" / "extensions" / ".obsolete",
-        home_dir / ".vscode" / "CachedData",
-    ]
+    # Clear CachedExtensionVSIXs contents
+    cached_ext = home_dir / ".config" / "Code" / "CachedExtensionVSIXs"
+    if cached_ext.exists():
+        size = get_directory_size(cached_ext)
+        if not dry_run:
+            for item in cached_ext.iterdir():
+                try:
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                except (OSError, PermissionError):
+                    continue
+        total_freed += size
     
-    for path in vscode_paths:
-        if path.exists():
-            size = get_directory_size(path)
-            if not dry_run:
-                if path.is_dir():
-                    shutil.rmtree(path, ignore_errors=True)
-                    path.mkdir(exist_ok=True)
-                else:
-                    path.unlink()
-            total_freed += size
+    # Remove .obsolete directory
+    obsolete = home_dir / ".vscode" / "extensions" / ".obsolete"
+    if obsolete.exists():
+        size = get_directory_size(obsolete)
+        if not dry_run:
+            shutil.rmtree(obsolete, ignore_errors=True)
+        total_freed += size
+    
+    # Clear CachedData contents
+    cached_data = home_dir / ".vscode" / "CachedData"
+    if cached_data.exists():
+        size = get_directory_size(cached_data)
+        if not dry_run:
+            for item in cached_data.iterdir():
+                try:
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                except (OSError, PermissionError):
+                    continue
+        total_freed += size
     
     return total_freed
