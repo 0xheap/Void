@@ -1,0 +1,12 @@
+{
+    "neovim": {
+        "name": "Neovim",
+        "url": "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage",
+        "type": "appimage",
+        "bin_path": "nvim-linux-x86_64.appimage",
+        "link_name": "nvim",
+        "post_install": [
+            "bash ~/Tools/Void/scripts/setup-nvim-config.sh"
+        ]
+    }
+}

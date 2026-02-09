@@ -195,6 +195,44 @@ def cmd_entry(args):
     installer.create_desktop_entry(app_name, app_info, custom_icon=icon_path)
 
 
+def cmd_refresh_icons(args):
+    """Regenerate desktop entries for installed apps with improved icon detection."""
+    app_name = getattr(args, "app_name", None)
+    
+    if app_name:
+        # Refresh specific app
+        if app_name not in apps.SUPPORTED_APPS:
+            print(f"Error: Application '{app_name}' is not supported.")
+            return
+        
+        if not installer.is_installed(app_name):
+            print(f"Error: {app_name} is not installed.")
+            return
+        
+        apps_to_refresh = [app_name]
+    else:
+        # Refresh all installed apps
+        apps_to_refresh = installer.get_installed_app_names()
+    
+    if not apps_to_refresh:
+        print("No installed apps found.")
+        return
+    
+    print(f"\nRegenerating desktop entries for {len(apps_to_refresh)} app(s)...\n")
+    
+    for app in apps_to_refresh:
+        app_info = apps.SUPPORTED_APPS.get(app)
+        if not app_info:
+            print(f"⚠ Skipping {app}: not in supported apps list")
+            continue
+        
+        print(f"Refreshing {app}...")
+        installer.create_desktop_entry(app, app_info)
+    
+    print(f"\n✓ Desktop entries refreshed successfully!")
+    print("Icons should now appear in your application menu.")
+
+
 def cmd_cleanup_analyze(args):
     """Analyze home directory and show cleanup opportunities."""
     print("\n" + "="*60)
@@ -825,6 +863,12 @@ def main():
     parser_entry.add_argument(
         "-i", "--icon", required=True, help="Path to icon file")
 
+    # Refresh Icons
+    parser_refresh = subparsers.add_parser(
+        "refresh-icons", help="Regenerate desktop entries with updated icon detection")
+    parser_refresh.add_argument(
+        "app_name", nargs="?", help="Specific app to refresh (default: all installed)")
+
     # TUI
     subparsers.add_parser("tui", help="Launch Text User Interface (Default)")
 
@@ -912,6 +956,8 @@ def main():
         cmd_install_all(args)
     elif args.command == "entry":
         cmd_entry(args)
+    elif args.command == "refresh-icons":
+        cmd_refresh_icons(args)
     elif args.command == "tui":
         tui.run()
     elif args.command == "cleanup":

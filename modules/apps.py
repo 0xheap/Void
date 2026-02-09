@@ -205,6 +205,20 @@ SUPPORTED_APPS = {
         "bin_path": "blender-4.0.2-linux-x64/blender",
         "link_name": "blender"
     },
+
+    # --- Terminals ---
+    "kitty": {
+        "name": "Kitty Terminal",
+        "url": "https://github.com/kovidgoyal/kitty/releases/download/v0.45.0/kitty-0.45.0-x86_64.txz",
+        "type": "tar.xz",
+        "bin_path": "kitty.app/bin/kitty",
+        "link_name": "kitty",
+        "data_paths": [
+            ".config/kitty"
+        ]
+    },
+
+    # --- Creative (continued) ---
     # "gimp": {
     #     "name": "GIMP",
     #     # "url": "https://download.gimp.org/gimp/v3.0/linux/gimp-3.0.6-x86_64.AppImage", # Official 404

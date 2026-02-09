@@ -197,6 +197,12 @@ The inspector will:
 ./void.py entry -a vscode -i /path/to/icon.png
 ```
 
+**Refresh desktop entries to fix missing icons:**
+```bash
+./void.py refresh-icons              # All installed apps
+./void.py refresh-icons vscode       # Specific app
+```
+
 #### Home Directory Cleanup
 
 **Analyze what can be cleaned:**

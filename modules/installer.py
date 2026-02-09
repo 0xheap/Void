@@ -524,19 +524,44 @@ def install_appimage(app_name, source_path, install_dir):
         raise e
 
 
-def find_icon(app_dir):
+def find_icon(app_dir, app_name=None):
     """
     Attempt to find an icon in the app directory.
-    Priority: .svg -> .png
-    Names: icon, logo, <appname>
+    Priority: .desktop file Icon field -> .svg -> .png in common locations
     """
-    candidates = []
-
-    # Simple top-down walk
+    # First, try to find icon from .desktop files
     for root, dirs, files in os.walk(app_dir):
-        # Limit depth
+        for file in files:
+            if file.endswith(".desktop"):
+                desktop_path = Path(root) / file
+                try:
+                    with open(desktop_path, "r") as f:
+                        for line in f:
+                            if line.startswith("Icon="):
+                                icon_value = line.split("=", 1)[1].strip()
+                                # If it's an absolute path and exists, use it
+                                icon_path = Path(icon_value)
+                                if icon_path.is_absolute() and icon_path.exists():
+                                    return icon_path
+                                # If it's relative, search in app_dir
+                                relative_icon = app_dir / icon_value
+                                if relative_icon.exists():
+                                    return relative_icon
+                                # Try with common extensions
+                                for ext in [".svg", ".png", ".xpm"]:
+                                    test_path = app_dir / f"{icon_value}{ext}"
+                                    if test_path.exists():
+                                        return test_path
+                except Exception:
+                    pass
+
+    # Fallback: search for icon files
+    candidates = []
+    app_name_lower = app_name.lower() if app_name else ""
+
+    for root, dirs, files in os.walk(app_dir):
         depth = len(Path(root).relative_to(app_dir).parts)
-        if depth > 3:
+        if depth > 5:  # Increased depth
             del dirs[:]
             continue
 
@@ -544,21 +569,34 @@ def find_icon(app_dir):
             if file.lower().endswith((".png", ".svg", ".xpm", ".ico")):
                 candidates.append(Path(root) / file)
 
-    # Scoring
+    # Score candidates
     best_candidate = None
     best_score = 0
 
     for cand in candidates:
         name = cand.name.lower()
+        parent = cand.parent.name.lower()
         score = 0
-        if "icon" in name:
+        
+        # Prioritize by location
+        if "icons" in parent or "pixmaps" in parent:
+            score += 10
+        
+        # Match app name
+        if app_name_lower and app_name_lower in name:
+            score += 15
+        
+        # Generic icon/logo names
+        if "icon" in name or "logo" in name:
             score += 5
-        if "logo" in name:
-            score += 5
-        if ".svg" in name:
-            score += 2
-        if "128" in name or "256" in name or "512" in name:
+        
+        # Prefer vector graphics
+        if name.endswith(".svg"):
             score += 3
+        
+        # Prefer larger sizes
+        if any(size in name for size in ["128", "256", "512", "scalable"]):
+            score += 4
 
         if score > best_score:
             best_score = score
@@ -597,7 +635,11 @@ def create_desktop_entry(app_name, app_info, custom_icon=None):
                     f"Warning: Could not copy icon: {e}. Using original path.")
                 icon_path = source_icon
         else:
-            icon_path = find_icon(app_install_dir)
+            icon_path = find_icon(app_install_dir, app_name)
+            if icon_path:
+                print(f"Found icon: {icon_path}")
+            else:
+                print(f"No icon found for {app_name}, using default")
 
         icon_str = str(icon_path) if icon_path else "utilities-terminal"
 
