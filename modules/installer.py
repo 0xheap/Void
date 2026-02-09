@@ -414,9 +414,10 @@ def extract_tar(archive_path, extract_to):
     try:
         # Detect mode based on suffix
         mode = "r:gz"
-        if str(archive_path).endswith("tar.xz"):
+        path_str = str(archive_path)
+        if path_str.endswith("tar.xz") or path_str.endswith(".txz"):
             mode = "r:xz"
-        elif str(archive_path).endswith("tar.bz2"):
+        elif path_str.endswith("tar.bz2"):
             mode = "r:bz2"
 
         with tarfile.open(archive_path, mode) as tar:

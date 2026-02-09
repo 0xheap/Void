@@ -14,7 +14,8 @@ SUPPORTED_APPS = {
         ],
         "post_install": [
             "{link} --install-extension ms-python.python",
-            "{link} --install-extension dbaeumer.vscode-eslint"
+            "{link} --install-extension teabyii.ayu",
+            "bash $HOME/Tools/scripts/vscode.sh"
         ]
     },
     "vscodium": {
@@ -36,7 +37,10 @@ SUPPORTED_APPS = {
         "url": "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage",
         "type": "appimage",
         "bin_path": "nvim-linux-x86_64.appimage",
-        "link_name": "nvim"
+        "link_name": "neo",
+        "post_install": [
+            "bash /home/abdessel/Tools/scripts/nvim.sh"
+            ]
     },
     "zed": {
          "name": "Zed Editor (Preview)",
@@ -211,7 +215,7 @@ SUPPORTED_APPS = {
         "name": "Kitty Terminal",
         "url": "https://github.com/kovidgoyal/kitty/releases/download/v0.45.0/kitty-0.45.0-x86_64.txz",
         "type": "tar.xz",
-        "bin_path": "kitty.app/bin/kitty",
+        "bin_path": "bin/kitty",
         "link_name": "kitty",
         "data_paths": [
             ".config/kitty"
