@@ -38,7 +38,10 @@ def load_config():
             f"Config file not found at {CONFIG_FILE}. Run 'void init' first.")
         sys.exit(1)
     with open(CONFIG_FILE, "r") as f:
-        return json.load(f)
+        content = f.read().strip()
+        if not content:
+            return {}
+        return json.loads(content)
 
 
 def load_custom_apps():
@@ -75,7 +78,7 @@ def cmd_init(args):
     # Create default config if missing
     if not CONFIG_FILE.exists():
         default_config = {
-            "apps": ["vscode", "discord", "postman"]
+            "apps": ["vscode", "obsidian", "neovim"]
         }
         with open(CONFIG_FILE, "w") as f:
             json.dump(default_config, f, indent=4)
@@ -827,6 +830,31 @@ def cmd_import(args):
     print(f"{'='*60}\n")
 
 
+def cmd_logout(args):
+    """Clean all apps from goinfre and logout."""
+    installed = installer.get_installed_app_names()
+    
+    if not installed:
+        print("No apps installed. Logging out...")
+    else:
+        print(f"\n{'='*60}")
+        print(f" Cleaning {len(installed)} app(s) from goinfre")
+        print(f"{'='*60}\n")
+        
+        for app_name in installed:
+            try:
+                installer.uninstall_app(app_name)
+            except Exception as e:
+                print(f"✗ Failed to uninstall {app_name}: {e}")
+        
+        print(f"\n{'='*60}")
+        print(" Cleanup Complete")
+        print(f"{'='*60}\n")
+    
+    print("Logging out...")
+    os.system("gnome-session-quit --logout --no-prompt")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Void - 1337 School Storage Manager made by ['abdessel']")
@@ -938,6 +966,10 @@ def main():
         "file", help="Path to exported JSON file")
     parser_import.add_argument(
         "-y", "--yes", action="store_true", help="Skip confirmation prompt")
+    
+    # Logout
+    subparsers.add_parser(
+        "logout", help="Clean all apps from goinfre and logout")
 
     # Load custom apps
     load_custom_apps()
@@ -983,6 +1015,8 @@ def main():
         cmd_export(args)
     elif args.command == "import":
         cmd_import(args)
+    elif args.command == "logout":
+        cmd_logout(args)
     elif args.command == "health":
         cmd_health(args)
     elif args.command == "repair":

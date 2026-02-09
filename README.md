@@ -1048,6 +1048,22 @@ Run 'void cleanup --execute' to clean these files.
 3. Check if AppImage requires specific system libraries
 4. Try downloading a different version
 
+#### "JSONDecodeError: Expecting value" when running commands
+
+**Problem:** Commands fail with `json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)`.
+
+**Cause:** The config file `~/.config/void/apps.json` is empty or corrupted.
+
+**Solutions:**
+1. Initialize or recreate the config file:
+   ```bash
+   ./void.py init
+   ```
+2. Or manually create an empty config:
+   ```bash
+   echo '{}' > ~/.config/void/apps.json
+   ```
+
 ### Getting Help
 
 If you encounter issues not covered here:

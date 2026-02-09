@@ -25,6 +25,13 @@ SUPPORTED_APPS = {
         "bin_path": "VSCodium-1.108.10359.glibc2.30-x86_64.AppImage",
         "link_name": "codium"
     },
+    "OpenCode": {
+            "name": "OpenCode",
+            "url": "https://opencode.ai/download/linux-x64-deb",
+            "type": "deb",
+            "bin_path": "usr/bin/opencode-cli",
+            "link_name": "opencode"
+        },
     "sublime": {
         "name": "Sublime Text 4",
         "url": "https://download.sublimetext.com/sublime_text_build_4169_x64.tar.xz",
@@ -553,7 +560,7 @@ SUPPORTED_APPS = {
         "bin_path": "opt/google/chrome/google-chrome",
         "link_name": "google-chrome"
     },
-    "zen browser": {
+    "zen": {
         "name": "zen browser",
         "url": "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz",
         "type": "tar.xz",
